@@ -1,0 +1,217 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-07-26T00:00:00Z",
+  "ruleUpdateUrl": "",
+  "sources": [
+    {
+      "id": "so360",
+      "name": "360搜索",
+      "enabled": true,
+      "confidence": 0.7,
+      "request": {
+        "urlTemplate": "https://www.so.com/s?q={number}&src=srp",
+        "method": "GET",
+        "headers": {
+          "User-Agent": "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36",
+          "Accept-Language": "zh-CN,zh;q=0.9"
+        },
+        "charset": "UTF-8",
+        "timeoutMs": 3000
+      },
+      "extract": {
+        "type": "regex",
+        "fields": {
+          "markType": {
+            "pattern": "该号码被\\d+人标记为[\"“]?([^\"”<，,]+)",
+            "group": 1
+          },
+          "markCount": {
+            "pattern": "该号码被(\\d+)人标记",
+            "group": 1,
+            "coerce": "int"
+          },
+          "bizName": {
+            "pattern": "class=\"mohe-tel[^\"]*name[^\"]*\"[^>]*>\\s*([^<]+?)\\s*<",
+            "group": 1
+          },
+          "location": {
+            "pattern": "归属地[:：]?\\s*(?:</?[a-zA-Z][^>]*>\\s*)*([^<\\s，,]{2,20})",
+            "group": 1
+          }
+        },
+        "successRequires": ["markType|bizName"]
+      },
+      "mapping": {
+        "markType": {
+          "诈骗": "fraud",
+          "疑似诈骗": "fraud",
+          "诈骗电话": "fraud",
+          "骚扰": "harassment",
+          "骚扰电话": "harassment",
+          "响一声": "harassment",
+          "广告": "telemarketing",
+          "推销": "telemarketing",
+          "广告推销": "telemarketing",
+          "保险理财": "telemarketing",
+          "房产中介": "agent",
+          "中介": "agent",
+          "催收": "debt",
+          "贷款催收": "debt",
+          "快递": "express",
+          "快递送餐": "express",
+          "外卖": "express",
+          "出租车": "taxi",
+          "网约车": "taxi",
+          "*": "custom"
+        }
+      }
+    },
+    {
+      "id": "baidu",
+      "name": "百度搜索",
+      "enabled": true,
+      "confidence": 0.6,
+      "request": {
+        "urlTemplate": "https://www.baidu.com/s?wd={number}&ie=utf-8",
+        "method": "GET",
+        "headers": {
+          "User-Agent": "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36",
+          "Accept-Language": "zh-CN,zh;q=0.9"
+        },
+        "charset": "UTF-8",
+        "timeoutMs": 3000
+      },
+      "extract": {
+        "type": "regex",
+        "fields": {
+          "markType": {
+            "pattern": "被(?:\\d+人)?标记为[\"“]?([^\"”<，,]+)",
+            "group": 1
+          },
+          "markCount": {
+            "pattern": "被(\\d+)人标记",
+            "group": 1,
+            "coerce": "int"
+          },
+          "bizName": {
+            "pattern": "官方(?:客服)?电话[^<]{0,10}[\"“]?([^\"”<，,]{2,30})",
+            "group": 1
+          },
+          "location": {
+            "pattern": "归属地[:：]?\\s*(?:</?[a-zA-Z][^>]*>\\s*)*([^<\\s，,]{2,20})",
+            "group": 1
+          }
+        },
+        "successRequires": ["markType|bizName"]
+      },
+      "mapping": {
+        "markType": {
+          "诈骗": "fraud",
+          "疑似诈骗": "fraud",
+          "骚扰电话": "harassment",
+          "骚扰": "harassment",
+          "广告推销": "telemarketing",
+          "推销": "telemarketing",
+          "房产中介": "agent",
+          "催收": "debt",
+          "快递送餐": "express",
+          "*": "custom"
+        }
+      }
+    },
+    {
+      "id": "sogou",
+      "name": "搜狗搜索（电话邦）",
+      "enabled": true,
+      "confidence": 0.65,
+      "request": {
+        "urlTemplate": "https://www.sogou.com/web?query={number}",
+        "method": "GET",
+        "headers": {
+          "User-Agent": "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36",
+          "Accept-Language": "zh-CN,zh;q=0.9"
+        },
+        "charset": "UTF-8",
+        "timeoutMs": 3000
+      },
+      "extract": {
+        "type": "regex",
+        "fields": {
+          "markType": {
+            "pattern": "(?:电话邦|用户)标记为[\"“]?([^\"”<，,]+)",
+            "group": 1
+          },
+          "markCount": {
+            "pattern": "被(\\d+)(?:位|人)用户标记",
+            "group": 1,
+            "coerce": "int"
+          },
+          "bizName": {
+            "pattern": "class=\"[^\"]*tel-name[^\"]*\"[^>]*>\\s*([^<]+?)\\s*<",
+            "group": 1
+          },
+          "location": {
+            "pattern": "归属地[:：]?\\s*(?:</?[a-zA-Z][^>]*>\\s*)*([^<\\s，,]{2,20})",
+            "group": 1
+          }
+        },
+        "successRequires": ["markType|bizName"]
+      },
+      "mapping": {
+        "markType": {
+          "诈骗": "fraud",
+          "疑似诈骗": "fraud",
+          "骚扰电话": "harassment",
+          "广告推销": "telemarketing",
+          "推销": "telemarketing",
+          "房产中介": "agent",
+          "催收": "debt",
+          "快递送餐": "express",
+          "出租车": "taxi",
+          "*": "custom"
+        }
+      }
+    },
+    {
+      "id": "haoma",
+      "name": "百度号码库",
+      "enabled": true,
+      "confidence": 0.9,
+      "request": {
+        "urlTemplate": "https://haoma.baidu.com/phoneSearch?search={number}&srcid=8757",
+        "method": "GET",
+        "headers": {
+          "User-Agent": "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36",
+          "Accept-Language": "zh-CN,zh;q=0.9"
+        },
+        "charset": "UTF-8",
+        "timeoutMs": 3000
+      },
+      "extract": {
+        "type": "jsonpath",
+        "preRegex": "window\\.__INITIAL_STATE__\\s*=\\s*(\\{.+?\\})\\s*;\\s*(?:window|</script)",
+        "fields": {
+          "bizName": { "path": "$.phoneSearch.data[0].name" },
+          "bizCategory": { "path": "$.phoneSearch.data[0].category" },
+          "bizVerified": { "path": "$.phoneSearch.data[0].certified", "coerce": "boolean" },
+          "markType": { "path": "$.phoneSearch.data[0].label" },
+          "markCount": { "path": "$.phoneSearch.data[0].markCount", "coerce": "int" },
+          "location": { "path": "$.phoneSearch.data[0].location" }
+        },
+        "successRequires": ["bizName|markType"]
+      },
+      "mapping": {
+        "markType": {
+          "诈骗电话": "fraud",
+          "疑似诈骗": "fraud",
+          "骚扰电话": "harassment",
+          "广告推销": "telemarketing",
+          "房产中介": "agent",
+          "催收": "debt",
+          "快递送餐": "express",
+          "*": "custom"
+        }
+      }
+    }
+  ]
+}

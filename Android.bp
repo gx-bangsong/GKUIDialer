@@ -211,6 +211,7 @@ android_app {
     srcs: [
         "java/**/I*.aidl",
         "java/**/*.java",
+        "java/**/*.kt",
     ],
     static_libs: [
         "android-common",
@@ -240,6 +241,9 @@ android_app {
         "guava",
         "jsr305",
         "jsr330",
+        "kotlin-stdlib",
+        "kotlinx_coroutines",
+        "kotlinx_coroutines_android",
         "libphonenumber",
         "org.lineageos.lib.phone",
         "volley",
@@ -283,3 +287,27 @@ prebuilt_etc {
     src: "privapp_whitelist_com.android.dialer-ext.xml",
     sub_dir: "permissions",
 }
+
+// Unit tests for the numberinfo stack (pure logic: rule engine, extractors,
+// aggregation, provider orchestration). The numberinfo sources are compiled
+// directly into the test APK so the tests do not depend on the full app.
+android_test {
+    name: "DialerNumberInfoTests",
+    manifest: "javatests/AndroidManifest.xml",
+    srcs: [
+        "java/com/android/dialer/numberinfo/**/*.kt",
+        "javatests/com/android/dialer/numberinfo/**/*.kt",
+    ],
+    asset_dirs: ["assets"],
+    static_libs: [
+        "androidx.test.ext.junit",
+        "androidx.test.runner",
+        "junit",
+        "kotlin-stdlib",
+        "kotlinx_coroutines",
+        "kotlinx_coroutines_android",
+    ],
+    sdk_version: "system_current",
+    test_suites: ["device-tests"],
+}
+
