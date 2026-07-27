@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: 2026 The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
+-->
+<resources>
+  <!-- Call screening / blocking -->
+  <string name="call_screening_settings_title">Call blocking</string>
+  <string name="screening_mode_title">Blocking mode</string>
+  <string name="screening_mode_off">Off</string>
+  <string name="screening_mode_blacklist">Block list mode</string>
+  <string name="screening_mode_blacklist_summary">Block calls matching any rule</string>
+  <string name="screening_mode_whitelist">Allow list mode</string>
+  <string name="screening_mode_whitelist_summary">Only allow contacts and allow-listed numbers</string>
+
+  <string name="block_rules_title">Blocking rules</string>
+  <string name="block_rule_add">Add rule</string>
+  <string name="block_rule_edit">Edit rule</string>
+  <string name="block_rule_empty">No blocking rules yet. Tap + to add one.</string>
+  <string name="block_rule_delete">Delete rule</string>
+  <string name="block_rule_deleted">Rule deleted</string>
+  <string name="block_rule_save">Save</string>
+  <string name="block_rule_value_missing">Enter a value for this rule</string>
+  <string name="block_rule_saved">Rule saved</string>
+
+  <string name="rule_type_title">Rule type</string>
+  <string name="rule_type_prefix">Number prefix</string>
+  <string name="rule_type_location">Location</string>
+  <string name="rule_type_mark">Mark category</string>
+  <string name="rule_type_blacklist">Block number</string>
+  <string name="rule_type_whitelist">Allow number</string>
+
+  <string name="rule_value_hint_prefix">Prefix, e.g. 170</string>
+  <string name="rule_value_hint_location">Province / city / carrier, e.g. Beijing</string>
+  <string name="rule_value_hint_number">Phone number (\'*\' suffix matches a prefix)</string>
+  <string name="rule_note_hint">Note (optional)</string>
+
+  <string name="rule_quick_prefixes_title">Common segments</string>
+  <string name="rule_prefix_group_virtual">MVNO segments</string>
+  <string name="rule_prefix_group_callcenter">Call centers</string>
+  <string name="rule_prefix_group_enterprise">Enterprise</string>
+  <string name="rule_prefix_group_area">Area codes</string>
+
+  <string name="rule_mark_types_title">Block calls marked as</string>
+  <string name="mark_type_fraud">Fraud</string>
+  <string name="mark_type_harassment">Harassment</string>
+  <string name="mark_type_telemarketing">Telemarketing</string>
+  <string name="mark_type_agent">Agent</string>
+  <string name="mark_type_debt">Debt collection</string>
+  <string name="mark_type_express">Delivery</string>
+  <string name="mark_type_taxi">Taxi</string>
+  <string name="mark_type_custom">Other marks</string>
+
+  <string name="rules_import">Import rules</string>
+  <string name="rules_export">Export rules</string>
+  <string name="rules_import_success">Imported %1$d rules (%2$d skipped)</string>
+  <string name="rules_import_failure">Could not import rules: invalid file</string>
+  <string name="rules_export_success">Rules exported</string>
+  <string name="rules_export_failure">Could not export rules</string>
+
+  <string name="blocked_calls_title">Blocked calls</string>
+  <string name="blocked_calls_empty">No blocked calls</string>
+  <string name="blocked_call_delete">Remove from list</string>
+  <string name="blocked_call_whitelist">Add to allow list</string>
+  <string name="blocked_call_whitelisted">Number added to allow list</string>
+  <string name="blocked_call_call_back">Call back</string>
+  <string name="blocked_call_clear_all">Clear all</string>
+  <string name="blocked_reason_prefix">Blocked · %1$s</string>
+
+  <string name="screening_skip_notification_title">Hide notifications for blocked calls</string>
+</resources>

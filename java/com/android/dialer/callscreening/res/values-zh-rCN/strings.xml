@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: 2026 The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
+-->
+<resources>
+  <string name="call_screening_settings_title">骚扰拦截</string>
+  <string name="screening_mode_title">拦截模式</string>
+  <string name="screening_mode_off">关闭</string>
+  <string name="screening_mode_blacklist">黑名单模式</string>
+  <string name="screening_mode_blacklist_summary">命中任一规则即拦截</string>
+  <string name="screening_mode_whitelist">白名单模式</string>
+  <string name="screening_mode_whitelist_summary">仅放行联系人与白名单号码</string>
+
+  <string name="block_rules_title">拦截规则</string>
+  <string name="block_rule_add">添加规则</string>
+  <string name="block_rule_edit">编辑规则</string>
+  <string name="block_rule_empty">还没有拦截规则，点击 + 添加。</string>
+  <string name="block_rule_delete">删除规则</string>
+  <string name="block_rule_deleted">规则已删除</string>
+  <string name="block_rule_save">保存</string>
+  <string name="block_rule_value_missing">请输入规则内容</string>
+  <string name="block_rule_saved">规则已保存</string>
+
+  <string name="rule_type_title">规则类型</string>
+  <string name="rule_type_prefix">号段前缀</string>
+  <string name="rule_type_location">归属地</string>
+  <string name="rule_type_mark">标记类型</string>
+  <string name="rule_type_blacklist">拦截号码</string>
+  <string name="rule_type_whitelist">放行号码</string>
+
+  <string name="rule_value_hint_prefix">号段前缀，如 170</string>
+  <string name="rule_value_hint_location">省份/城市/运营商，如 北京</string>
+  <string name="rule_value_hint_number">电话号码（结尾加 * 表示前缀匹配）</string>
+  <string name="rule_note_hint">备注（可选）</string>
+
+  <string name="rule_quick_prefixes_title">常见号段</string>
+  <string name="rule_prefix_group_virtual">虚商号段</string>
+  <string name="rule_prefix_group_callcenter">呼叫中心</string>
+  <string name="rule_prefix_group_enterprise">企业号段</string>
+  <string name="rule_prefix_group_area">区号</string>
+
+  <string name="rule_mark_types_title">拦截以下标记的来电</string>
+  <string name="mark_type_fraud">诈骗</string>
+  <string name="mark_type_harassment">骚扰</string>
+  <string name="mark_type_telemarketing">广告推销</string>
+  <string name="mark_type_agent">中介</string>
+  <string name="mark_type_debt">催收</string>
+  <string name="mark_type_express">快递外卖</string>
+  <string name="mark_type_taxi">网约车</string>
+  <string name="mark_type_custom">其他标记</string>
+
+  <string name="rules_import">导入规则</string>
+  <string name="rules_export">导出规则</string>
+  <string name="rules_import_success">已导入 %1$d 条规则（跳过 %2$d 条）</string>
+  <string name="rules_import_failure">导入失败：文件无效</string>
+  <string name="rules_export_success">规则已导出</string>
+  <string name="rules_export_failure">导出失败</string>
+
+  <string name="blocked_calls_title">拦截记录</string>
+  <string name="blocked_calls_empty">暂无拦截记录</string>
+  <string name="blocked_call_delete">删除记录</string>
+  <string name="blocked_call_whitelist">加入白名单</string>
+  <string name="blocked_call_whitelisted">已加入白名单</string>
+  <string name="blocked_call_call_back">回拨</string>
+  <string name="blocked_call_clear_all">清空全部</string>
+  <string name="blocked_reason_prefix">已拦截 · %1$s</string>
+
+  <string name="screening_skip_notification_title">拦截来电不显示通知</string>
+</resources>

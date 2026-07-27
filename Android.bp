@@ -22,6 +22,7 @@ android_app {
         "--extra-packages com.android.dialer.calllog.ui",
         "--extra-packages com.android.dialer.calllog.ui.menu",
         "--extra-packages com.android.dialer.calllogutils",
+        "--extra-packages com.android.dialer.callscreening",
         "--extra-packages com.android.dialer.clipboard",
         "--extra-packages com.android.dialer.common",
         "--extra-packages com.android.dialer.contactphoto",
@@ -140,6 +141,7 @@ android_app {
         "java/com/android/dialer/calllog/ui/menu/res",
         "java/com/android/dialer/calllogutils/res",
         "java/com/android/dialer/callrecord/res",
+        "java/com/android/dialer/callscreening/res",
         "java/com/android/dialer/callstats/res",
         "java/com/android/dialer/clipboard/res",
         "java/com/android/dialer/common/res",
@@ -295,8 +297,17 @@ android_test {
     name: "DialerNumberInfoTests",
     manifest: "javatests/AndroidManifest.xml",
     srcs: [
+        "java/com/android/dialer/callscreening/**/*.kt",
         "java/com/android/dialer/numberinfo/**/*.kt",
+        "javatests/com/android/dialer/callscreening/**/*.kt",
         "javatests/com/android/dialer/numberinfo/**/*.kt",
+    ],
+    // UI classes need the app's aapt-generated R and material widgets; the
+    // pure-logic test APK compiles without them.
+    exclude_srcs: [
+        "java/com/android/dialer/callscreening/DialerCallScreeningService.kt",
+        "java/com/android/dialer/callscreening/record/BlockedCallsActivity.kt",
+        "java/com/android/dialer/callscreening/ui/**/*.kt",
     ],
     asset_dirs: ["assets"],
     static_libs: [

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: 2026 The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
+-->
+<resources>
+  <!--
+      MD3-style semantic colors for the screening UI, expressed as theme attrs
+      so widgets never hard-code color values. The host theme (Dialer.ThemeBase
+      descendants) is AppCompat-based, so we bridge via our own attrs with
+      day/night defaults instead of depending on a Material3 theme.
+  -->
+  <attr name="screeningColorSecondaryContainer" format="color" />
+  <attr name="screeningColorOnSecondaryContainer" format="color" />
+  <attr name="screeningColorErrorContainer" format="color" />
+  <attr name="screeningColorOnErrorContainer" format="color" />
+</resources>

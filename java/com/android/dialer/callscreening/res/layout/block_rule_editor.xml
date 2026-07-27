@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: 2026 The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
+-->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+  <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:orientation="vertical"
+      android:padding="16dp">
+
+    <!-- Rule type selector: single-choice chips -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/rule_type_title"
+        android:textAppearance="?android:attr/textAppearanceListItem" />
+
+    <com.google.android.material.chip.ChipGroup
+        android:id="@+id/rule_type_group"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        app:singleSelection="true"
+        app:selectionRequired="true" />
+
+    <!-- Value input -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/rule_value_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp">
+
+      <com.google.android.material.textfield.TextInputEditText
+          android:id="@+id/rule_value_input"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:inputType="text"
+          android:maxLines="1" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- Quick prefix chips (visible for PREFIX / BLACKLIST / WHITELIST) -->
+    <TextView
+        android:id="@+id/quick_prefixes_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="@string/rule_quick_prefixes_title"
+        android:textAppearance="?android:attr/textAppearanceListItem" />
+
+    <HorizontalScrollView
+        android:id="@+id/quick_prefixes_scroll"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:scrollbars="none">
+
+      <com.google.android.material.chip.ChipGroup
+          android:id="@+id/quick_prefixes_group"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          app:singleLine="true" />
+    </HorizontalScrollView>
+
+    <!-- Mark-type multi-select FilterChips (visible for MARK_TYPE rules) -->
+    <TextView
+        android:id="@+id/mark_types_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="@string/rule_mark_types_title"
+        android:textAppearance="?android:attr/textAppearanceListItem" />
+
+    <com.google.android.material.chip.ChipGroup
+        android:id="@+id/mark_types_group"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp" />
+
+    <!-- Note -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:hint="@string/rule_note_hint">
+
+      <com.google.android.material.textfield.TextInputEditText
+          android:id="@+id/rule_note_input"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:inputType="text"
+          android:maxLines="1" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <Space
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/rule_save_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:text="@string/block_rule_save" />
+  </LinearLayout>
+</ScrollView>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: 2026 The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
+-->
+<resources>
+  <color name="screening_secondary_container">#4A4458</color>
+  <color name="screening_on_secondary_container">#E8DEF8</color>
+  <color name="screening_error_container">#8C1D18</color>
+  <color name="screening_on_error_container">#F9DEDC</color>
+</resources>

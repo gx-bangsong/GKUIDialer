@@ -152,6 +152,14 @@ public class DialerSettingsActivity extends BaseActivity implements
       lookupSettings.setIconSpaceReserved(false);
       getPreferenceScreen().addPreference(lookupSettings);
 
+      final Preference callScreeningSettings = new Preference(getContext());
+      callScreeningSettings.setTitle(
+              com.android.dialer.callscreening.R.string.call_screening_settings_title);
+      callScreeningSettings.setFragment(
+              com.android.dialer.callscreening.ui.ScreeningSettingsFragment.class.getName());
+      callScreeningSettings.setIconSpaceReserved(false);
+      getPreferenceScreen().addPreference(callScreeningSettings);
+
       TelephonyManager telephonyManager = getContext().getSystemService(TelephonyManager.class);
       TelecomManager telecomManager = (TelecomManager) getContext().getSystemService(
               Context.TELECOM_SERVICE);

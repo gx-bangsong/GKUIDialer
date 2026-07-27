@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: 2026 The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
+-->
+<resources>
+  <!-- MD3 tonal palette samples; dark variants in values-night/. -->
+  <color name="screening_secondary_container">#E8DEF8</color>
+  <color name="screening_on_secondary_container">#1D192B</color>
+  <color name="screening_error_container">#F9DEDC</color>
+  <color name="screening_on_error_container">#410E0B</color>
+</resources>

@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: 2026 The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:minHeight="72dp"
+    android:paddingStart="16dp"
+    android:paddingEnd="8dp"
+    android:background="?android:attr/selectableItemBackground">
+
+  <ImageView
+      android:layout_width="24dp"
+      android:layout_height="24dp"
+      android:src="@drawable/quantum_ic_block_vd_theme_24"
+      android:tint="?attr/screeningColorOnErrorContainer"
+      android:importantForAccessibility="no" />
+
+  <LinearLayout
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_weight="1"
+      android:layout_marginStart="16dp"
+      android:orientation="vertical">
+
+    <TextView
+        android:id="@+id/blocked_number"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceListItem"
+        android:maxLines="1"
+        android:ellipsize="end" />
+
+    <TextView
+        android:id="@+id/blocked_detail"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceListItemSecondary"
+        android:textColor="?android:attr/textColorSecondary"
+        android:maxLines="2"
+        android:ellipsize="end" />
+  </LinearLayout>
+
+  <ImageButton
+      android:id="@+id/blocked_overflow"
+      android:layout_width="48dp"
+      android:layout_height="48dp"
+      android:background="?android:attr/selectableItemBackgroundBorderless"
+      android:contentDescription="@string/blocked_calls_title"
+      android:src="@drawable/quantum_ic_more_vert_vd_theme_24"
+      android:tint="?android:attr/textColorSecondary" />
+</LinearLayout>

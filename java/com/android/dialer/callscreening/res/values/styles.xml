@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: 2026 The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
+-->
+<resources>
+  <!--
+      Screening activities theme. MaterialComponents *Bridge* parent so that
+      Chip/TextInputLayout/FAB inflate correctly on top of the otherwise
+      AppCompat-based Dialer theming (the bridge keeps AppCompat attr values
+      while satisfying material widgets' theme checks).
+  -->
+  <style name="ScreeningTheme" parent="Theme.MaterialComponents.DayNight.Bridge">
+    <item name="android:forceDarkAllowed">false</item>
+    <item name="colorPrimary">@color/dialer_theme_color</item>
+    <item name="colorAccent">@color/dialer_theme_color</item>
+    <item name="screeningColorSecondaryContainer">@color/screening_secondary_container</item>
+    <item name="screeningColorOnSecondaryContainer">@color/screening_on_secondary_container</item>
+    <item name="screeningColorErrorContainer">@color/screening_error_container</item>
+    <item name="screeningColorOnErrorContainer">@color/screening_on_error_container</item>
+  </style>
+
+  <!-- MD3 FilterChip-like appearance built on the bundled material Chip. -->
+  <style name="ScreeningFilterChip" parent="Widget.MaterialComponents.Chip.Filter">
+    <item name="chipBackgroundColor">@color/screening_chip_background</item>
+    <item name="android:textColor">@color/screening_chip_text</item>
+    <item name="checkedIconVisible">true</item>
+    <item name="chipStrokeWidth">1dp</item>
+    <item name="chipStrokeColor">@color/screening_chip_stroke</item>
+    <item name="chipCornerRadius">8dp</item>
+  </style>
+
+  <!-- Quick-input chip (AssistChip equivalent): tap to fill, not checkable. -->
+  <style name="ScreeningAssistChip" parent="Widget.MaterialComponents.Chip.Action">
+    <item name="chipBackgroundColor">@android:color/transparent</item>
+    <item name="chipStrokeWidth">1dp</item>
+    <item name="chipStrokeColor">@color/screening_chip_stroke</item>
+    <item name="chipCornerRadius">8dp</item>
+  </style>
+</resources>

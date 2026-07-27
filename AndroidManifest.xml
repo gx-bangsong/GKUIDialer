@@ -579,6 +579,40 @@
             </intent-filter>
         </service>
 
+        <!-- Call screening (骚扰拦截): bound automatically by Telecom because
+             this app holds ROLE_DIALER. directBootAware so screening works
+             before first unlock (settings/db use device-protected storage). -->
+        <service
+            android:name="com.android.dialer.callscreening.DialerCallScreeningService"
+            android:directBootAware="true"
+            android:exported="true"
+            android:permission="android.permission.BIND_SCREENING_SERVICE">
+            <intent-filter>
+                <action android:name="android.telecom.CallScreeningService" />
+            </intent-filter>
+        </service>
+
+        <activity
+            android:name="com.android.dialer.callscreening.ui.BlockRuleListActivity"
+            android:exported="false"
+            android:label="@string/block_rules_title"
+            android:parentActivityName="com.android.dialer.app.settings.DialerSettingsActivity"
+            android:theme="@style/ScreeningTheme" />
+
+        <activity
+            android:name="com.android.dialer.callscreening.ui.BlockRuleEditorActivity"
+            android:exported="false"
+            android:label="@string/block_rule_add"
+            android:parentActivityName="com.android.dialer.callscreening.ui.BlockRuleListActivity"
+            android:theme="@style/ScreeningTheme" />
+
+        <activity
+            android:name="com.android.dialer.callscreening.record.BlockedCallsActivity"
+            android:exported="false"
+            android:label="@string/blocked_calls_title"
+            android:parentActivityName="com.android.dialer.app.settings.DialerSettingsActivity"
+            android:theme="@style/ScreeningTheme" />
+
         <activity
             android:name="com.android.incallui.AudioRouteSelectorActivity"
             android:excludeFromRecents="true"
