@@ -1,0 +1,7 @@
+package com.gkuidialer.model
+
+enum class TagType {
+    SPAM_MARKETING, SPAM_FRAUD, SPAM_HARASSMENT,
+    FINANCE_DEBT, REAL_ESTATE, INSURANCE,
+    DELIVERY, SERVICE_OFFICIAL, UNKNOWN
+}
