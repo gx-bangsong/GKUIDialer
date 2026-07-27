@@ -17,6 +17,7 @@
 
 package com.android.dialer.phonelookup;
 
+import com.android.dialer.numbermark.NumberMarkPhoneLookup;
 import com.android.dialer.phonelookup.blockednumber.SystemBlockedNumberPhoneLookup;
 import com.android.dialer.phonelookup.cequint.CequintPhoneLookup;
 import com.android.dialer.phonelookup.cnap.CnapPhoneLookup;
@@ -41,6 +42,7 @@ public abstract class PhoneLookupModule {
       Cp2DefaultDirectoryPhoneLookup cp2DefaultDirectoryPhoneLookup,
       Cp2ExtendedDirectoryPhoneLookup cp2ExtendedDirectoryPhoneLookup,
       EmergencyPhoneLookup emergencyPhoneLookup,
+      NumberMarkPhoneLookup numberMarkPhoneLookup,
       SystemBlockedNumberPhoneLookup systemBlockedNumberPhoneLookup) {
     return ImmutableList.of(
         cequintPhoneLookup,
@@ -48,6 +50,7 @@ public abstract class PhoneLookupModule {
         cp2DefaultDirectoryPhoneLookup,
         cp2ExtendedDirectoryPhoneLookup,
         emergencyPhoneLookup,
+        numberMarkPhoneLookup,
         systemBlockedNumberPhoneLookup);
   }
 }

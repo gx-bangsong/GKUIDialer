@@ -393,6 +393,23 @@ public final class PhoneLookupInfoConsolidator {
   }
 
   /**
+   * Returns the human-readable label (e.g. "广告推销") reported by third-party number-marking
+   * sources (360/Baidu/Sogou), or an empty string if the number hasn't been marked or the
+   * feature is disabled. See {@link com.android.dialer.numbermark.NumberMarkPhoneLookup}.
+   */
+  public String getNumberMarkLabel() {
+    return phoneLookupInfo.getNumberMarkInfo().getRawLabel();
+  }
+
+  /**
+   * Returns the name of the {@link com.android.dialer.numbermark.NumberMarkType} enum value
+   * associated with this number, or an empty string if unmarked.
+   */
+  public String getNumberMarkType() {
+    return phoneLookupInfo.getNumberMarkInfo().getMarkType();
+  }
+
+  /**
    * The {@link PhoneLookupInfo} passed to the constructor is associated with a number. This method
    * returns whether the number can be reported as invalid.
    *

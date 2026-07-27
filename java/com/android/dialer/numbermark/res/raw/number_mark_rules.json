@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "keywordMap": [
+    {"type": "FRAUD", "keywords": ["诈骗", "欺诈", "网络诈骗", "电信诈骗", "诈骗电话"]},
+    {"type": "HARASSMENT", "keywords": ["骚扰", "骚扰电话", "骚扰号码"]},
+    {"type": "ADVERTISING_SALES", "keywords": ["广告", "推销", "广告推销", "营销", "商业营销"]},
+    {"type": "LOAN_FINANCE", "keywords": ["贷款", "理财", "投资理财", "信贷", "金融"]},
+    {"type": "INSURANCE", "keywords": ["保险", "保险推销"]},
+    {"type": "REAL_ESTATE_AGENT", "keywords": ["房产中介", "房产", "中介", "装修"]},
+    {"type": "EXPRESS_DELIVERY", "keywords": ["快递", "物流", "快递通知"]},
+    {"type": "TAXI_RIDE_HAILING", "keywords": ["出租车", "网约车", "打车"]},
+    {"type": "SURVEY_MARKETING", "keywords": ["调查", "问卷", "市场调查"]},
+    {"type": "INTERMEDIARY_AGENT", "keywords": ["中介", "招聘", "培训", "代理"]},
+    {"type": "VERIFIED_ORGANIZATION", "keywords": ["企业认证", "官方", "认证号码", "客服电话", "企业号码"]}
+  ],
+  "sources": {
+    "360": {
+      "snippetPatterns": [
+        "号码标记[：:]*\\s*([^<\\n]{1,40})",
+        "标记为[\"“]?([^<\\n\"”]{1,20})[\"”]?",
+        "<em>([^<]{1,20})</em>\\s*(?:次|人)标记"
+      ],
+      "countPattern": "([0-9]{1,7})\\s*(?:人|次)(?:标记|举报)",
+      "locationPattern": "归属地[：:]*\\s*([^<\\n,，]{1,20})"
+    },
+    "baidu": {
+      "snippetPatterns": [
+        "号码标记[：:]*\\s*([^<\\n]{1,40})",
+        "被标记为[\"“]?([^<\\n\"”]{1,20})[\"”]?",
+        "多人标记为\\s*([^<\\n]{1,20})"
+      ],
+      "countPattern": "([0-9]{1,7})\\s*(?:人|次)(?:标记|举报)",
+      "locationPattern": "归属地[：:]*\\s*([^<\\n,，]{1,20})"
+    },
+    "sogou_dianhuabang": {
+      "snippetPatterns": [
+        "电话邦[^<]{0,40}?标记[为：:]*\\s*([^<\\n]{1,40})",
+        "dianhua\\.cn[^<]{0,120}?([^<\\n]{1,20}?号码)",
+        "统一客服电话"
+      ],
+      "countPattern": "([0-9]{1,7})\\s*(?:人|次)(?:标记|举报)",
+      "locationPattern": "归属地[：:]*\\s*([^<\\n,，]{1,20})"
+    }
+  }
+}

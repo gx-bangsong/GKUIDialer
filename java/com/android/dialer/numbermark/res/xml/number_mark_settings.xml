@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
+-->
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <SwitchPreferenceCompat
+        android:key="enable_number_mark"
+        android:persistent="false"
+        android:title="@string/enable_number_mark_title"
+        android:summary="@string/enable_number_mark_summary"
+        app:iconSpaceReserved="false" />
+
+    <PreferenceCategory
+        android:title="@string/number_mark_sources_title"
+        android:dependency="enable_number_mark"
+        app:iconSpaceReserved="false">
+
+        <SwitchPreferenceCompat
+            android:key="number_mark_source_360"
+            android:persistent="false"
+            android:title="@string/number_mark_source_360"
+            app:iconSpaceReserved="false" />
+
+        <SwitchPreferenceCompat
+            android:key="number_mark_source_baidu"
+            android:persistent="false"
+            android:title="@string/number_mark_source_baidu"
+            app:iconSpaceReserved="false" />
+
+        <SwitchPreferenceCompat
+            android:key="number_mark_source_sogou_dianhuabang"
+            android:persistent="false"
+            android:title="@string/number_mark_source_sogou_dianhuabang"
+            app:iconSpaceReserved="false" />
+    </PreferenceCategory>
+
+    <Preference
+        android:key="number_mark_clear_cache"
+        android:title="@string/number_mark_clear_cache_title"
+        android:summary="@string/number_mark_clear_cache_summary"
+        app:iconSpaceReserved="false" />
+
+</PreferenceScreen>

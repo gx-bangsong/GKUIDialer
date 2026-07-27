@@ -46,6 +46,7 @@ import com.android.dialer.dialpadview.DialpadFragment;
 import com.android.dialer.dialpadview.DialpadFragment.DialpadListener;
 import com.android.dialer.dialpadview.DialpadFragment.OnDialpadQueryChangedListener;
 import com.android.dialer.helplines.HelplineActivity;
+import com.android.dialer.yellowpages.YellowPagesActivity;
 import com.android.dialer.main.impl.bottomnav.BottomNavBar;
 import com.android.dialer.main.impl.toolbar.MainToolbar;
 import com.android.dialer.main.impl.toolbar.SearchBarListener;
@@ -467,6 +468,8 @@ public class MainSearchController implements SearchBarListener {
       activity.startActivity(intent);
     } else if (menuItem.getItemId() == R.id.menu_helplines) {
       activity.startActivity(new Intent(activity, HelplineActivity.class));
+    } else if (menuItem.getItemId() == R.id.menu_yellow_pages) {
+      activity.startActivity(new Intent(activity, YellowPagesActivity.class));
     }
     return false;
   }

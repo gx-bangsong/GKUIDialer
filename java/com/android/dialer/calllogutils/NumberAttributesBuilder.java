@@ -47,6 +47,8 @@ public final class NumberAttributesBuilder {
         .setContactSource(phoneLookupInfoConsolidator.getContactSource())
         .setCanSupportCarrierVideoCall(phoneLookupInfoConsolidator.canSupportCarrierVideoCall())
         .setGeolocation(phoneLookupInfoConsolidator.getGeolocation())
-        .setIsEmergencyNumber(phoneLookupInfoConsolidator.isEmergencyNumber());
+        .setIsEmergencyNumber(phoneLookupInfoConsolidator.isEmergencyNumber())
+        .setNumberMarkLabel(phoneLookupInfoConsolidator.getNumberMarkLabel())
+        .setNumberMarkType(phoneLookupInfoConsolidator.getNumberMarkType());
   }
 }

@@ -196,4 +196,23 @@ message PhoneLookupInfo {
     optional int32 source_type = 5;
   }
   optional MigratedInfo migrated_info = 10;
+
+  // Message for third-party number mark (号码标记) info, e.g. from 360/Baidu/Sogou.
+  // NumberMarkPhoneLookup is responsible for populating this message.
+  // Next ID: 5
+  message NumberMarkInfo {
+    // Name of the com.android.dialer.numbermark.NumberMarkType enum value, stored as a string so
+    // that this proto doesn't need to be regenerated whenever a new mark type is added.
+    optional string mark_type = 1;
+
+    // The original label text as reported by the source (e.g. "广告推销").
+    optional string raw_label = 2;
+
+    // Number of other users who have applied this mark, if known.
+    optional int32 mark_count = 3;
+
+    // Free-form location/carrier text associated with the number, if provided by the source.
+    optional string location = 4;
+  }
+  optional NumberMarkInfo number_mark_info = 11;
 }

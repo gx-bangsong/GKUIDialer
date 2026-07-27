@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
+-->
+<resources>
+    <string name="harassment_block_settings_label">骚扰拦截</string>
+    <string name="harassment_block_enable_title">启用骚扰拦截</string>
+    <string name="harassment_block_enable_summary">根据号段归属地、标记类型和黑白名单规则自动拦截来电</string>
+    <string name="harassment_block_mode_title">拦截模式</string>
+    <string name="harassment_block_mode_blacklist">黑名单模式（仅拦截匹配的号码）</string>
+    <string name="harassment_block_mode_whitelist">白名单模式（仅放行匹配的号码及联系人）</string>
+    <string name="harassment_block_rules_title">拦截规则</string>
+    <string name="harassment_block_add_rule">添加规则</string>
+    <string name="harassment_block_no_rules">暂无规则，点击右下角按钮添加</string>
+    <string name="harassment_block_rule_type_title">规则类型</string>
+    <string name="harassment_block_rule_type_number_prefix">号段</string>
+    <string name="harassment_block_rule_type_location">归属地</string>
+    <string name="harassment_block_rule_type_mark_type">标记类型</string>
+    <string name="harassment_block_common_prefixes_title">常见号段</string>
+    <string name="harassment_block_mark_types_title">标记类型（可多选）</string>
+    <string name="harassment_block_value_hint">输入号段或归属地关键字，前面加 ! 表示反向匹配</string>
+    <string name="harassment_block_save">保存</string>
+    <string name="harassment_block_cancel">取消</string>
+    <string name="harassment_block_delete_rule">删除规则</string>
+    <string name="harassment_block_rule_deleted">已删除规则</string>
+    <string name="harassment_block_invalid_rule">请输入有效的号段/归属地，或至少选择一个标记类型</string>
+    <string name="harassment_block_rule_summary_prefix">号段：%1$s</string>
+    <string name="harassment_block_rule_summary_location">归属地：%1$s</string>
+    <string name="harassment_block_rule_summary_mark_type">标记：%1$s</string>
+    <string name="harassment_block_rule_mode_blacklist">黑名单</string>
+    <string name="harassment_block_rule_mode_whitelist">白名单</string>
+</resources>

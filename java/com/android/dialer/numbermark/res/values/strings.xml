@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
+-->
+<resources>
+    <string name="number_mark_settings_label">号码标记</string>
+    <string name="number_mark_settings_title">来电号码标记</string>
+    <string name="enable_number_mark_title">启用号码标记</string>
+    <string name="enable_number_mark_summary">来电时显示号码在 360、百度、搜狗（电话邦）等平台的标记信息</string>
+    <string name="number_mark_sources_title">标记数据来源</string>
+    <string name="number_mark_source_360">360 搜索</string>
+    <string name="number_mark_source_baidu">百度搜索</string>
+    <string name="number_mark_source_sogou_dianhuabang">搜狗 / 电话邦</string>
+    <string name="number_mark_clear_cache_title">清除标记缓存</string>
+    <string name="number_mark_clear_cache_summary">清除本地缓存的号码标记结果</string>
+    <string name="number_mark_cache_cleared">已清除号码标记缓存</string>
+
+    <!-- Number mark type display labels -->
+    <string name="number_mark_type_fraud">诈骗电话</string>
+    <string name="number_mark_type_harassment">骚扰电话</string>
+    <string name="number_mark_type_advertising_sales">广告推销</string>
+    <string name="number_mark_type_loan_finance">贷款理财</string>
+    <string name="number_mark_type_insurance">保险推销</string>
+    <string name="number_mark_type_real_estate_agent">房产中介</string>
+    <string name="number_mark_type_express_delivery">快递外卖</string>
+    <string name="number_mark_type_taxi_ride_hailing">出租/网约车</string>
+    <string name="number_mark_type_survey_marketing">调查营销</string>
+    <string name="number_mark_type_intermediary_agent">中介代理</string>
+    <string name="number_mark_type_verified_organization">企业认证</string>
+    <string name="number_mark_type_other">其他标记</string>
+</resources>

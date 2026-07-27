@@ -43,6 +43,7 @@ import com.android.dialer.app.BaseActivity;
 import com.android.dialer.common.LogUtil;
 import com.android.dialer.compat.telephony.TelephonyManagerCompat;
 import com.android.dialer.lookup.LookupSettingsFragment;
+import com.android.dialer.numbermark.NumberMarkSettingsFragment;
 import com.android.dialer.util.PermissionsUtil;
 import com.android.dialer.voicemail.settings.VoicemailSettingsFragment;
 import com.android.voicemail.VoicemailClient;
@@ -151,6 +152,26 @@ public class DialerSettingsActivity extends BaseActivity implements
       lookupSettings.setFragment(LookupSettingsFragment.class.getName());
       lookupSettings.setIconSpaceReserved(false);
       getPreferenceScreen().addPreference(lookupSettings);
+
+      final Preference numberMarkSettings = new Preference(getContext());
+      numberMarkSettings.setTitle(R.string.number_mark_settings_label);
+      numberMarkSettings.setFragment(NumberMarkSettingsFragment.class.getName());
+      numberMarkSettings.setIconSpaceReserved(false);
+      getPreferenceScreen().addPreference(numberMarkSettings);
+
+      final Preference harassmentBlockSettings = new Preference(getContext());
+      harassmentBlockSettings.setTitle(R.string.harassment_block_settings_label);
+      harassmentBlockSettings.setIntent(
+          new Intent(getContext(), com.android.dialer.harassmentblock.HarassmentBlockActivity.class));
+      harassmentBlockSettings.setIconSpaceReserved(false);
+      getPreferenceScreen().addPreference(harassmentBlockSettings);
+
+      final Preference yellowPagesSettings = new Preference(getContext());
+      yellowPagesSettings.setTitle(R.string.yellow_pages_label);
+      yellowPagesSettings.setIntent(
+          new Intent(getContext(), com.android.dialer.yellowpages.YellowPagesActivity.class));
+      yellowPagesSettings.setIconSpaceReserved(false);
+      getPreferenceScreen().addPreference(yellowPagesSettings);
 
       TelephonyManager telephonyManager = getContext().getSystemService(TelephonyManager.class);
       TelecomManager telecomManager = (TelecomManager) getContext().getSystemService(

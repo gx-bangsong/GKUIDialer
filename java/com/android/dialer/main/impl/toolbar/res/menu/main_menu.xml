@@ -34,6 +34,10 @@
     android:title="@string/action_menu_helplines"/>
 
   <item
+    android:id="@+id/menu_yellow_pages"
+    android:title="@string/yellow_pages_label"/>
+
+  <item
       android:id="@+id/settings"
       android:title="@string/dialer_settings_label"
       app:showAsAction="collapseActionView"/>

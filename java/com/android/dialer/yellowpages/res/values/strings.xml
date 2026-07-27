@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
+-->
+<resources>
+    <string name="yellow_pages_label">黄页</string>
+    <string name="yellow_pages_search_hint">搜索号码或名称，如“顺丰”、“10086”</string>
+    <string name="yellow_pages_empty">未找到匹配的黄页信息</string>
+    <string name="yellow_pages_verify_on_baidu">前往百度号码认证平台查询/认证</string>
+    <string name="yellow_pages_verify_on_baidu_summary">对于本地未收录的号码，可前往百度号码服务平台（haoma.baidu.com）查询企业认证信息或提交号码认证/申诉</string>
+    <string name="yellow_pages_call_action">拨打</string>
+    <string name="yellow_pages_source_note">数据来源：本地黄页数据库（参考 exTHmUI 黄页数据格式）及百度号码认证平台</string>
+</resources>
