@@ -23,7 +23,7 @@ class PhoneLocationTableTest {
             ),
         )
         assertEquals(1, table.size)
-        assertEquals("北京 移动", table.lookupMobile("13800130000"))
+        assertEquals("北京 · 移动", table.lookupMobile("13800130000"))
     }
 
     @Test
@@ -35,9 +35,9 @@ class PhoneLocationTableTest {
                 "1700000,广东,广州,电信",
             ),
         )
-        assertEquals("山东济南 联通", table.lookupMobile("13000001234"))
-        assertEquals("广东广州 电信", table.lookupMobile("17000001234"))
-        assertEquals("北京 移动", table.lookupMobile("15900001234"))
+        assertEquals("山东济南 · 联通", table.lookupMobile("13000001234"))
+        assertEquals("广东广州 · 电信", table.lookupMobile("17000001234"))
+        assertEquals("北京 · 移动", table.lookupMobile("15900001234"))
     }
 
     @Test
@@ -49,7 +49,7 @@ class PhoneLocationTableTest {
             ),
         )
         assertEquals(1, table.size)
-        assertEquals("北京 移动", table.lookupMobile("13800001234"))
+        assertEquals("北京 · 移动", table.lookupMobile("13800001234"))
     }
 
     @Test
@@ -61,12 +61,12 @@ class PhoneLocationTableTest {
 
     @Test
     fun formatLocation_citySameAsProvince_isNotDuplicated() {
-        assertEquals("北京 移动", PhoneLocationTable.formatLocation("北京", "北京", "移动"))
+        assertEquals("北京 · 移动", PhoneLocationTable.formatLocation("北京", "北京", "移动"))
     }
 
     @Test
     fun formatLocation_provinceAndCity_areConcatenated() {
-        assertEquals("广东深圳 电信", PhoneLocationTable.formatLocation("广东", "深圳", "电信"))
+        assertEquals("广东深圳 · 电信", PhoneLocationTable.formatLocation("广东", "深圳", "电信"))
     }
 
     @Test

@@ -114,7 +114,7 @@ class PhoneLocationTable private constructor(
             return when {
                 place.isEmpty() -> carrierName
                 carrierName.isEmpty() -> place
-                else -> "$place $carrierName"
+                else -> place + NumberLocationFormatter.SEPARATOR + carrierName
             }
         }
     }

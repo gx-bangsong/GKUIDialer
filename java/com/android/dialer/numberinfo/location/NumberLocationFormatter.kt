@@ -20,6 +20,9 @@ object NumberLocationFormatter {
 
     const val CN_CALLING_CODE = 86
 
+    /** Between place and carrier: "北京市 · 中国移动", "Changzhou, Jiangsu · China Mobile". */
+    const val SEPARATOR = " · "
+
     fun format(geo: RawGeo): String? {
         val place = geo.description?.trim()?.takeIf { it.isNotEmpty() }
         val carrier = geo.carrier?.trim()?.takeIf { it.isNotEmpty() }
@@ -38,6 +41,6 @@ object NumberLocationFormatter {
         if (second == null) return first
         if (first.contains(second)) return first
         if (second.contains(first)) return second
-        return "$first $second"
+        return first + SEPARATOR + second
     }
 }

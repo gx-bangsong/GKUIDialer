@@ -19,7 +19,7 @@ class NumberLocationFormatterTest {
     @Test
     fun domesticCityLevel_showsPlaceAndCarrier() {
         val text = NumberLocationFormatter.format(cn("北京市", "中国移动"))!!
-        assertEquals("北京市 中国移动", text)
+        assertEquals("北京市 · 中国移动", text)
     }
 
     @Test
@@ -61,7 +61,16 @@ class NumberLocationFormatterTest {
         assertEquals("北京", NumberLocationFormatter.joinDistinct("北京", "北京"))
         assertEquals("广东移动", NumberLocationFormatter.joinDistinct("广东", "广东移动"))
         assertEquals("广东移动", NumberLocationFormatter.joinDistinct("广东移动", "广东"))
-        assertEquals("北京市 中国移动", NumberLocationFormatter.joinDistinct("北京市", "中国移动"))
+        assertEquals("北京市 · 中国移动", NumberLocationFormatter.joinDistinct("北京市", "中国移动"))
+    }
+
+    @Test
+    fun english_placeAndCarrierAreSeparatedByDot() {
+        val text = NumberLocationFormatter.format(RawGeo(
+            regionCode = "CN", countryCallingCode = 86,
+            description = "Changzhou, Jiangsu", carrier = "China Mobile",
+            countryLevelOnly = false))
+        assertEquals("Changzhou, Jiangsu · China Mobile", text)
     }
 
     @Test
