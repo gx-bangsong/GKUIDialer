@@ -1,0 +1,53 @@
+[
+  {
+    "category": "生活服务",
+    "entries": [
+      {"name": "中国移动客服", "number": "10086", "icon": "china_mobile", "description": "中国移动人工客服热线"},
+      {"name": "中国联通客服", "number": "10010", "icon": "china_unicom", "description": "中国联通人工客服热线"},
+      {"name": "中国电信客服", "number": "10000", "icon": "china_telecom", "description": "中国电信人工客服热线"},
+      {"name": "中国邮政客服", "number": "11183", "icon": "china_post", "description": "中国邮政客户服务热线"},
+      {"name": "国家电网客服", "number": "95598", "icon": "state_grid", "description": "国家电网供电服务热线"}
+    ]
+  },
+  {
+    "category": "快递物流",
+    "entries": [
+      {"name": "顺丰速运", "number": "95338", "icon": "sf_express", "description": "顺丰速运客服热线"},
+      {"name": "圆通速递", "number": "95554", "icon": "yto_express", "description": "圆通速递客服热线"},
+      {"name": "中通快递", "number": "95311", "icon": "zto_express", "description": "中通快递客服热线"},
+      {"name": "申通快递", "number": "95543", "icon": "sto_express", "description": "申通快递客服热线"},
+      {"name": "韵达快递", "number": "95546", "icon": "yunda_express", "description": "韵达快递客服热线"},
+      {"name": "京东物流", "number": "950616", "icon": "jd_logistics", "description": "京东物流客服热线"}
+    ]
+  },
+  {
+    "category": "出行交通",
+    "entries": [
+      {"name": "滴滴出行客服", "number": "4001000000", "icon": "didi", "description": "滴滴出行客服热线"},
+      {"name": "12306 铁路客服", "number": "12306", "icon": "railway_12306", "description": "中国铁路客户服务中心"},
+      {"name": "民航服务", "number": "95583", "icon": "civil_aviation", "description": "民航服务热线"}
+    ]
+  },
+  {
+    "category": "金融银行",
+    "entries": [
+      {"name": "中国银行客服", "number": "95566", "icon": "boc", "description": "中国银行客服热线"},
+      {"name": "中国工商银行客服", "number": "95588", "icon": "icbc", "description": "中国工商银行客服热线"},
+      {"name": "中国建设银行客服", "number": "95533", "icon": "ccb", "description": "中国建设银行客服热线"},
+      {"name": "中国农业银行客服", "number": "95599", "icon": "abc", "description": "中国农业银行客服热线"},
+      {"name": "支付宝客服", "number": "95188", "icon": "alipay", "description": "支付宝客服热线"}
+    ]
+  },
+  {
+    "category": "政务民生",
+    "entries": [
+      {"name": "报警电话", "number": "110", "icon": "police", "description": "公安报警服务电话"},
+      {"name": "火警电话", "number": "119", "icon": "fire", "description": "火警报警服务电话"},
+      {"name": "急救电话", "number": "120", "icon": "ambulance", "description": "医疗急救服务电话"},
+      {"name": "交通事故报警", "number": "122", "icon": "traffic_police", "description": "交通事故报警电话"},
+      {"name": "12345政务服务热线", "number": "12345", "icon": "government", "description": "政务服务便民热线"},
+      {"name": "12315消费者投诉举报", "number": "12315", "icon": "consumer", "description": "市场监管投诉举报热线"},
+      {"name": "12321涉诈骚扰电话举报", "number": "12321", "icon": "anti_fraud", "description": "垃圾信息举报受理中心"}
+    ]
+  }
+]

@@ -295,6 +295,18 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name="com.android.dialer.harassmentblock.HarassmentBlockActivity"
+            android:exported="false"
+            android:label="@string/harassment_block_settings_label"
+            android:theme="@style/Dialer.ThemeBase.ActionBar" />
+
+        <activity
+            android:name="com.android.dialer.yellowpages.YellowPagesActivity"
+            android:exported="false"
+            android:label="@string/yellow_pages_label"
+            android:theme="@style/Dialer.ThemeBase.ActionBar" />
+
         <!-- Service to update a contact -->
         <service
             android:name="com.android.dialer.interactions.ContactUpdateService"

@@ -76,4 +76,12 @@ message NumberAttributes {
 
   // Whether the number is an emergency number.
   optional bool is_emergency_number = 14;
+
+  // Human-readable number mark label from a NumberMarkPhoneLookup source (e.g. "广告推销"),
+  // for display purposes only. Empty if the number has no third-party mark.
+  optional string number_mark_label = 15;
+
+  // Name of the com.android.dialer.numbermark.NumberMarkType enum value corresponding to
+  // number_mark_label, stored as a string so new mark types don't require regenerating this proto.
+  optional string number_mark_type = 16;
 }

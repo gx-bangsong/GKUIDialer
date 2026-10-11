@@ -63,6 +63,7 @@ import com.android.incallui.call.ExternalCallList;
 import com.android.incallui.call.TelecomAdapter;
 import com.android.incallui.call.state.DialerCallState;
 import com.android.incallui.disconnectdialog.DisconnectMessage;
+import com.android.incallui.harassmentblock.HarassmentBlockCallListener;
 import com.android.incallui.incalluilock.InCallUiLock;
 import com.android.incallui.spam.SpamCallListListener;
 import com.android.incallui.telecomeventui.InternationalCallOnWifiDialogActivity;
@@ -177,6 +178,7 @@ public class InCallPresenter implements CallList.Listener, AudioModeProvider.Aud
   private InCallCameraManager inCallCameraManager;
   private CallList.Listener spamCallListListener;
   private CallList.Listener activeCallsListener;
+  private CallList.Listener harassmentBlockCallListener;
   /** Whether or not we are currently bound and waiting for Telecom to send us a new call. */
   private boolean boundAndWaitingForOutgoingCall;
   /** Determines if the InCall UI is in fullscreen mode or not. */
@@ -340,6 +342,14 @@ public class InCallPresenter implements CallList.Listener, AudioModeProvider.Aud
     this.callList.addListener(spamCallListListener);
     activeCallsListener = new ActiveCallsCallListListener(context);
     this.callList.addListener(activeCallsListener);
+
+    // Create harassment block listener and add it to the list of listeners. This must run before
+    // the UI layer's incoming-call listeners so that a blocked call can be rejected before any
+    // ringing UI is shown.
+    harassmentBlockCallListener =
+        new HarassmentBlockCallListener(
+            context, DialerExecutorComponent.get(context).dialerExecutorFactory());
+    this.callList.addListener(harassmentBlockCallListener);
 
     VideoPauseController.getInstance().setUp(this);
 
@@ -1431,6 +1441,7 @@ public class InCallPresenter implements CallList.Listener, AudioModeProvider.Aud
       if (callList != null) {
         callList.removeListener(this);
         callList.removeListener(spamCallListListener);
+        callList.removeListener(harassmentBlockCallListener);
       }
       callList = null;
 
