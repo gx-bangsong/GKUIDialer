@@ -18,8 +18,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 /**
@@ -43,8 +41,13 @@ class NumberInfoRepository(
     private val aggregator: NumberInfoAggregator = NumberInfoAggregator(),
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    /** Serializes per-number online refreshes to avoid duplicate fetches. */
-    private val refreshMutex = Mutex()
+    /**
+     * Serializes online refreshes of the *same* number (the second caller then
+     * finds fresh cache instead of fetching again). Different numbers never
+     * wait for each other — a slow in-call refresh must not eat the screening
+     * budget of the next incoming call.
+     */
+    private val refreshLocks = KeyedMutex<String>()
 
     fun interface Listener {
         /** Invoked on an IO thread; hop to main before touching views. */
@@ -79,19 +82,24 @@ class NumberInfoRepository(
         if (isContact(number)) return@withContext null
 
         val local = providerManager.queryLocal(number)
+
+        var online: List<NumberInfo> = emptyList()
+        if (settings.onlineLookupEnabled) {
+            online = refreshLocks.withLock(number) {
+                fetchAndCacheOnline(number, perSourceTimeoutMs)
+            }
+        }
+        // Read the cache after the online phase so results stored by a
+        // concurrent refresh of this number (which we may have waited for)
+        // are included. Fresh online results win over cached rows per source.
         val cached = try {
             cacheDao.getValid(number, settings.cacheTtlMillis, settings.negativeCacheTtlMillis)
         } catch (e: Exception) {
             emptyList()
         }
-
-        var online: List<NumberInfo> = emptyList()
-        if (settings.onlineLookupEnabled) {
-            online = refreshMutex.withLock {
-                fetchAndCacheOnline(number, perSourceTimeoutMs)
-            }
-        }
-        aggregator.aggregate(number, manualOf(local), local + cached + online)
+        val onlineSources = online.mapTo(HashSet()) { it.source }
+        val merged = online + cached.filter { it.source !in onlineSources }
+        aggregator.aggregate(number, manualOf(local), local + merged)
     }
 
     /** The manual mark travels through ManualMarkProvider like any source;
@@ -109,7 +117,7 @@ class NumberInfoRepository(
         scope.launch {
             try {
                 if (isContact(number)) return@launch
-                val fetched = refreshMutex.withLock {
+                val fetched = refreshLocks.withLock(number) {
                     fetchAndCacheOnline(number, ProviderManager.DEFAULT_SOURCE_TIMEOUT_MS)
                 }
                 if (fetched.isEmpty()) return@launch
