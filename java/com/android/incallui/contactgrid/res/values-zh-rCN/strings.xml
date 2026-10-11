@@ -23,4 +23,5 @@
   <string name="contact_grid_incoming_via_template">有人通过 %s 来电</string>
   <string name="contact_grid_incoming_suspected_spam">疑似骚扰电话号码：</string>
   <string name="contact_grid_callback_number">此手机的号码：%1$s</string>
+  <string name="incall_video_call_operation_failed">无法执行操作</string>
 </resources>

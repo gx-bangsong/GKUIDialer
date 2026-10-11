@@ -21,4 +21,6 @@
     <string name="tab_title_call_history" msgid="5191872501729332994">"通话记录"</string>
     <string name="tab_title_speed_dial" msgid="1968484500112572774">"快速拨号"</string>
     <string name="tab_title_voicemail" msgid="4777655983569268504">"语音邮件"</string>
+  <string name="dialpad_activity_title">拨号键盘</string>
+  <string name="dialpad_button_content_description">拨号键盘</string>
 </resources>
