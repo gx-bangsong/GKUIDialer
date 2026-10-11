@@ -1,0 +1,1448 @@
+From ab1ae42a01333388967589b6dc1e91e695914cba Mon Sep 17 00:00:00 2001
+From: gx-bangsong <146644201+gx-bangsong@users.noreply.github.com>
+Date: Sun, 11 Oct 2026 05:23:07 +0000
+Subject: [PATCH 1/4] numberinfo: keep the trunk prefix when normalizing +86
+ landlines
+
+NumberNormalizer stripped +86 and returned the bare national number, so
+"+86 10 1234 5678" became "1012345678" while the same number dialed
+domestically is "01012345678". PREFIX rules such as "010" never matched
+landlines that Telecom delivers in E.164 form, cache rows were split
+between the two forms, and web sources were queried with a wrong number.
+
+- +86 landlines (10/2X + 8 digits, 3XX-9XX + 7-8 digits) regain the "0";
+  mobiles, 400/800 and short service numbers are unchanged
+- "+86 (0)10 ..." mis-format no longer doubles the zero
+- "00" is treated as the international access prefix ("0044" == "+44")
+- full-width digits / plus sign from CJK input methods are accepted
+- new normalizePrefix() for rule prefixes; a bare "+86" yields null
+  instead of an empty prefix that would match every number
+---
+ .../dialer/numberinfo/NumberNormalizer.kt     | 97 ++++++++++++++-----
+ .../dialer/numberinfo/NumberNormalizerTest.kt | 86 ++++++++++++++++
+ 2 files changed, 161 insertions(+), 22 deletions(-)
+
+diff --git a/java/com/android/dialer/numberinfo/NumberNormalizer.kt b/java/com/android/dialer/numberinfo/NumberNormalizer.kt
+index eb2f983cb..01e93ea76 100644
+--- a/java/com/android/dialer/numberinfo/NumberNormalizer.kt
++++ b/java/com/android/dialer/numberinfo/NumberNormalizer.kt
+@@ -10,9 +10,14 @@ package com.android.dialer.numberinfo
+  * "+86 138 0013 8000", "8613800138000" and "13800138000" all hit the same
+  * cache row and the same block rule.
+  *
+- * Canonical form (CN-centric, matches what domestic sources index):
+- *  - separators/garbage stripped, only digits kept (plus a possible leading '+')
+- *  - CN country code (+86 / 0086 / 86) stripped, leaving the national number
++ * Canonical form (CN-centric, matches what domestic sources index and what
++ * users type into rules):
++ *  - separators/garbage stripped, only digits kept (plus a possible leading '+');
++ *    full-width digits (１３８…) from CJK input methods are accepted
++ *  - "00" international access prefix is treated as '+' ("0044…" == "+44…")
++ *  - CN country code (+86 / 0086 / 86) stripped, leaving the domestic dialing
++ *    form: landlines get their trunk prefix back ("+86 10 1234 5678" ->
++ *    "01012345678"), mobiles / 400 / 800 / short codes stay as they are
+  *  - other international numbers are kept in "+<cc><nsn>" form as-is
+  *
+  * Pure logic, no Android dependencies — unit-testable on any JVM.
+@@ -21,34 +26,82 @@ object NumberNormalizer {
+ 
+     @JvmStatic
+     fun normalize(raw: String?): String? {
++        var n = digitsWithLeadingPlus(raw) ?: return null
++        n = internationalForm(n)
++        // Bare "86" prefix in front of an 11-digit mobile (861380013....)
++        if (!n.startsWith("+") && n.length == 13 && n.startsWith("86") && n[2] == '1') {
++            n = "+$n"
++        }
++        // Strip CN country code: the domestic dialing form is canonical.
++        if (n.startsWith("+86")) {
++            n = domesticFromNsn(n.substring(3))
++        }
++        return n.takeIf { it.isNotEmpty() && it != "+" }
++    }
++
++    /**
++     * Canonicalizes a number *prefix* typed into a block rule ("170",
++     * "+86 10", "0086-755", "001"), following the same conventions as
++     * [normalize]. Returns null when nothing usable is left — in particular for
++     * a bare country code ("+86"), which must never degrade into an empty
++     * prefix that would match every number.
++     */
++    @JvmStatic
++    fun normalizePrefix(raw: String?): String? {
++        var n = digitsWithLeadingPlus(raw) ?: return null
++        n = internationalForm(n)
++        if (n.startsWith("+86")) {
++            val nsn = n.substring(3)
++            n = when {
++                nsn.isEmpty() -> return null
++                nsn.startsWith("0") -> nsn
++                nsn.startsWith("10") -> "0$nsn" // 北京区号 010
++                nsn.startsWith("1") -> nsn // 手机号段 13x–19x
++                nsn.startsWith("400") || nsn.startsWith("800") -> nsn
++                // "4", "40", "8", "80": could be 400/800 or an area code — keep.
++                "400".startsWith(nsn) || "800".startsWith(nsn) -> nsn
++                else -> "0$nsn" // 2X / 3XX–9XX 区号
++            }
++        }
++        return n.takeIf { it.isNotEmpty() && it != "+" }
++    }
++
++    /** Keeps decimal digits (any script, e.g. full-width) and one leading '+'. */
++    private fun digitsWithLeadingPlus(raw: String?): String? {
+         if (raw.isNullOrBlank()) return null
+         val sb = StringBuilder(raw.length)
+         for (c in raw) {
+-            if (c in '0'..'9') {
+-                sb.append(c)
+-            } else if (c == '+' && sb.isEmpty()) {
+-                sb.append(c)
++            val digit = Character.digit(c, 10)
++            if (digit >= 0) {
++                sb.append('0' + digit)
++            } else if ((c == '+' || c == '\uFF0B') && sb.isEmpty()) {
++                sb.append('+')
+             }
+             // everything else (spaces, dashes, parentheses, letters) is dropped
+         }
+-        var n = sb.toString()
+-        if (n.isEmpty() || n == "+") return null
++        return sb.toString().takeIf { it.isNotEmpty() && it != "+" }
++    }
+ 
+-        // 0086... -> +86...
+-        if (n.startsWith("0086")) {
+-            n = "+86" + n.substring(4)
+-        }
+-        // Bare "86" prefix in front of an 11-digit mobile (861380013....)
+-        if (!n.startsWith("+") && n.length == 13 && n.startsWith("86") && n[2] == '1') {
+-            n = "+86" + n.substring(2)
+-        }
+-        // Strip CN country code entirely: national number is canonical.
+-        if (n.startsWith("+86")) {
+-            n = n.substring(3)
+-        }
+-        return if (n.isEmpty()) null else n
++    /** "00<cc>…" (international access prefix used in CN) -> "+<cc>…". */
++    private fun internationalForm(n: String): String =
++        if (n.startsWith("00")) "+" + n.substring(2) else n
++
++    /**
++     * Converts a CN national significant number (what follows +86) into the
++     * domestic dialing form. Only landlines change: they regain the trunk
++     * prefix "0", otherwise a "010" rule or cache entry would never match a
++     * Beijing number delivered as "+86 10 …".
++     */
++    private fun domesticFromNsn(nsn: String): String = when {
++        nsn.startsWith("0") -> nsn // "+86 (0)10 …" mis-format: already domestic
++        nsn.startsWith("400") || nsn.startsWith("800") -> nsn
++        CN_LANDLINE_NSN.matches(nsn) -> "0$nsn"
++        else -> nsn // mobiles, 95xxx / 10xxx service numbers, unknown shapes
+     }
+ 
++    /** Area code (10, 2X, or 3-digit 3XX–9XX) followed by a 7–8 digit subscriber number. */
++    private val CN_LANDLINE_NSN = Regex("(?:10|2\\d)\\d{8}|[3-9]\\d{9,10}")
++
+     /** "13800138000" -> "138****8000"; used for log output only, never for queries. */
+     @JvmStatic
+     fun maskForLog(number: String?): String {
+diff --git a/javatests/com/android/dialer/numberinfo/NumberNormalizerTest.kt b/javatests/com/android/dialer/numberinfo/NumberNormalizerTest.kt
+index 1ada265d0..3d8ebf7ad 100644
+--- a/javatests/com/android/dialer/numberinfo/NumberNormalizerTest.kt
++++ b/javatests/com/android/dialer/numberinfo/NumberNormalizerTest.kt
+@@ -72,6 +72,92 @@ class NumberNormalizerTest {
+         assertEquals(setOf("13800138000"), canon)
+     }
+ 
++    // -- E.164 landlines: the trunk prefix "0" must come back ----------------
++
++    @Test
++    fun normalize_e164Landline_restoresTrunkPrefix() {
++        assertEquals("01012345678", NumberNormalizer.normalize("+861012345678"))        // 北京
++        assertEquals("02161234567", NumberNormalizer.normalize("+86 21 6123 4567"))     // 上海
++        assertEquals("075512345678", NumberNormalizer.normalize("+86 755 1234 5678"))   // 深圳
++        assertEquals("05718888888", NumberNormalizer.normalize("0086 571 888 8888"))    // 7-digit subscriber
++    }
++
++    @Test
++    fun normalize_e164AndDomesticLandlineAgree() {
++        assertEquals(
++            NumberNormalizer.normalize("010-1234 5678"),
++            NumberNormalizer.normalize("+86 10 1234 5678"))
++        assertEquals(
++            NumberNormalizer.normalize("0755-12345678"),
++            NumberNormalizer.normalize("+8675512345678"))
++    }
++
++    @Test
++    fun normalize_e164WithStrayTrunkZero() {
++        // "+86 (0)10 …" is a common mis-format; the zero must not be doubled.
++        assertEquals("01012345678", NumberNormalizer.normalize("+86 (0)10 1234 5678"))
++    }
++
++    @Test
++    fun normalize_e164ServiceNumbersKeepNationalForm() {
++        assertEquals("4001234567", NumberNormalizer.normalize("+86 400 123 4567"))
++        assertEquals("8001234567", NumberNormalizer.normalize("+86 800 123 4567"))
++        assertEquals("95533", NumberNormalizer.normalize("+86 95533"))
++        assertEquals("10086", NumberNormalizer.normalize("+86 10086"))
++        // Mobiles are unaffected by the landline rule.
++        assertEquals("13800138000", NumberNormalizer.normalize("+86 138 0013 8000"))
++    }
++
++    @Test
++    fun normalize_internationalAccessPrefix00() {
++        assertEquals("+14155550100", NumberNormalizer.normalize("001 415 555 0100"))
++        assertEquals(
++            NumberNormalizer.normalize("+44 20 7946 0958"),
++            NumberNormalizer.normalize("0044 20 7946 0958"))
++    }
++
++    @Test
++    fun normalize_fullWidthDigitsFromCjkInput() {
++        assertEquals("13800138000", NumberNormalizer.normalize("１３８ ００１３ ８０００"))
++        assertEquals("13800138000", NumberNormalizer.normalize("＋８６１３８００１３８０００"))
++    }
++
++    @Test
++    fun normalize_bareInternationalPrefixIsJunk() {
++        assertNull(NumberNormalizer.normalize("00"))
++        assertNull(NumberNormalizer.normalize("+86"))
++    }
++
++    // -- prefixes typed into rules -------------------------------------------
++
++    @Test
++    fun normalizePrefix_domesticFormsUntouched() {
++        assertEquals("170", NumberNormalizer.normalizePrefix("170"))
++        assertEquals("010", NumberNormalizer.normalizePrefix("010"))
++        assertEquals("95", NumberNormalizer.normalizePrefix("95"))
++    }
++
++    @Test
++    fun normalizePrefix_countryCodeForms() {
++        assertEquals("010", NumberNormalizer.normalizePrefix("+86 10"))
++        assertEquals("021", NumberNormalizer.normalizePrefix("+86 21"))
++        assertEquals("0755", NumberNormalizer.normalizePrefix("0086-755"))
++        assertEquals("138", NumberNormalizer.normalizePrefix("+86 138"))
++        assertEquals("400", NumberNormalizer.normalizePrefix("+86 400"))
++        assertEquals("010", NumberNormalizer.normalizePrefix("+86 010")) // stray trunk zero
++        assertEquals("+1", NumberNormalizer.normalizePrefix("001"))
++        assertEquals("+44", NumberNormalizer.normalizePrefix("+44"))
++    }
++
++    @Test
++    fun normalizePrefix_rejectsEmptyResults() {
++        assertNull(NumberNormalizer.normalizePrefix("+86"))
++        assertNull(NumberNormalizer.normalizePrefix("0086"))
++        assertNull(NumberNormalizer.normalizePrefix("00"))
++        assertNull(NumberNormalizer.normalizePrefix("--"))
++        assertNull(NumberNormalizer.normalizePrefix(null))
++    }
++
+     @Test
+     fun maskForLog_masksMiddleDigits() {
+         assertEquals("138****8000", NumberNormalizer.maskForLog("13800138000"))
+-- 
+2.47.3
+
+
+From 730bb6c2742edc8593dec0286675ea597da5f241 Mon Sep 17 00:00:00 2001
+From: gx-bangsong <146644201+gx-bangsong@users.noreply.github.com>
+Date: Sun, 11 Oct 2026 05:23:08 +0000
+Subject: [PATCH 2/4] callscreening: store and match rule values in canonical
+ form
+
+Rule values were saved verbatim while incoming numbers are normalized,
+so a blacklist entry pasted as "+86 138 0013 8000" (or "138-0013-8000")
+could never match the incoming "13800138000".
+
+RuleValues.normalize() defines the canonical value per rule type and is
+applied when saving from the editor (invalid values are rejected inline),
+when importing JSON (unusable rows are skipped and counted), and again in
+the decision engine so rows written by earlier builds keep working
+without a database migration.
+---
+ .../callscreening/ScreeningDecisionEngine.kt  | 12 +++-
+ .../res/values-zh-rCN/strings.xml             |  1 +
+ .../callscreening/res/values/strings.xml      |  1 +
+ .../dialer/callscreening/rule/RulePorter.kt   | 11 +--
+ .../dialer/callscreening/rule/RuleValues.kt   | 46 ++++++++++++
+ .../ui/BlockRuleEditorActivity.kt             | 13 +++-
+ .../ScreeningDecisionEngineTest.kt            | 50 +++++++++++++
+ .../callscreening/rule/RulePorterTest.kt      | 31 ++++++++
+ .../callscreening/rule/RuleValuesTest.kt      | 72 +++++++++++++++++++
+ 9 files changed, 230 insertions(+), 7 deletions(-)
+ create mode 100644 java/com/android/dialer/callscreening/rule/RuleValues.kt
+ create mode 100644 javatests/com/android/dialer/callscreening/rule/RuleValuesTest.kt
+
+diff --git a/java/com/android/dialer/callscreening/ScreeningDecisionEngine.kt b/java/com/android/dialer/callscreening/ScreeningDecisionEngine.kt
+index 62ad35073..14b6bab8e 100644
+--- a/java/com/android/dialer/callscreening/ScreeningDecisionEngine.kt
++++ b/java/com/android/dialer/callscreening/ScreeningDecisionEngine.kt
+@@ -7,6 +7,7 @@ package com.android.dialer.callscreening
+ 
+ import com.android.dialer.callscreening.rule.BlockRule
+ import com.android.dialer.callscreening.rule.RuleType
++import com.android.dialer.callscreening.rule.RuleValues
+ import com.android.dialer.callscreening.rule.ScreeningMode
+ import com.android.dialer.numberinfo.MarkType
+ import com.android.dialer.numberinfo.NumberInfo
+@@ -65,7 +66,16 @@ class ScreeningDecisionEngine {
+         if (isEmergencyNumber(number)) return Decision(Action.ALLOW, null, "SAFETY:emergency")
+         if (isContact) return Decision(Action.ALLOW, null, "SAFETY:contact")
+ 
+-        val active = rules.filter { it.enabled }
++        // Rule values are compared in canonical form; rows saved verbatim by
++        // older builds (e.g. "+86 138 0013 8000") are canonicalized here, and
++        // values that are unusable for their type are dropped.
++        val active = rules.asSequence()
++            .filter { it.enabled }
++            .mapNotNull { rule ->
++                RuleValues.normalize(rule.type, rule.value)
++                    ?.let { value -> if (value == rule.value) rule else rule.copy(value = value) }
++            }
++            .toList()
+ 
+         // 1. Whitelist beats everything in both modes.
+         active.firstOrNull { it.type == RuleType.WHITELIST && numberMatches(number, it.value) }
+diff --git a/java/com/android/dialer/callscreening/res/values-zh-rCN/strings.xml b/java/com/android/dialer/callscreening/res/values-zh-rCN/strings.xml
+index 46a8e5556..bf1e144ce 100644
+--- a/java/com/android/dialer/callscreening/res/values-zh-rCN/strings.xml
++++ b/java/com/android/dialer/callscreening/res/values-zh-rCN/strings.xml
+@@ -20,6 +20,7 @@
+   <string name="block_rule_deleted">规则已删除</string>
+   <string name="block_rule_save">保存</string>
+   <string name="block_rule_value_missing">请输入规则内容</string>
++  <string name="block_rule_value_invalid">不是有效的号码或号段</string>
+   <string name="block_rule_saved">规则已保存</string>
+ 
+   <string name="rule_type_title">规则类型</string>
+diff --git a/java/com/android/dialer/callscreening/res/values/strings.xml b/java/com/android/dialer/callscreening/res/values/strings.xml
+index c06be4703..cc57034ea 100644
+--- a/java/com/android/dialer/callscreening/res/values/strings.xml
++++ b/java/com/android/dialer/callscreening/res/values/strings.xml
+@@ -21,6 +21,7 @@
+   <string name="block_rule_deleted">Rule deleted</string>
+   <string name="block_rule_save">Save</string>
+   <string name="block_rule_value_missing">Enter a value for this rule</string>
++  <string name="block_rule_value_invalid">Not a valid phone number or prefix</string>
+   <string name="block_rule_saved">Rule saved</string>
+ 
+   <string name="rule_type_title">Rule type</string>
+diff --git a/java/com/android/dialer/callscreening/rule/RulePorter.kt b/java/com/android/dialer/callscreening/rule/RulePorter.kt
+index 50b5b527e..4cd624722 100644
+--- a/java/com/android/dialer/callscreening/rule/RulePorter.kt
++++ b/java/com/android/dialer/callscreening/rule/RulePorter.kt
+@@ -23,8 +23,9 @@ import org.json.JSONObject
+  * }
+  *
+  * Import is strict about the envelope (bad file -> exception, nothing applied)
+- * but tolerant per-row: unknown rule types are skipped and counted, so exports
+- * from a newer app version degrade gracefully.
++ * but tolerant per-row: unknown rule types and unusable values are skipped and
++ * counted, so exports from a newer app version degrade gracefully. Values are
++ * stored in canonical form ([RuleValues]).
+  */
+ object RulePorter {
+ 
+@@ -65,8 +66,10 @@ object RulePorter {
+         for (i in 0 until arr.length()) {
+             val o = arr.getJSONObject(i)
+             val type = RuleType.fromId(o.optString("type"))
+-            val value = o.optString("value")
+-            if (type == null || value.isBlank()) {
++            // Canonical form, same as rules saved from the editor; values that
++            // are not usable for their type (e.g. "abc" as a number) are skipped.
++            val value = type?.let { RuleValues.normalize(it, o.optString("value")) }
++            if (type == null || value == null) {
+                 skipped++
+                 continue
+             }
+diff --git a/java/com/android/dialer/callscreening/rule/RuleValues.kt b/java/com/android/dialer/callscreening/rule/RuleValues.kt
+new file mode 100644
+index 000000000..c4ca9d950
+--- /dev/null
++++ b/java/com/android/dialer/callscreening/rule/RuleValues.kt
+@@ -0,0 +1,46 @@
++/*
++ * SPDX-FileCopyrightText: 2026 The LineageOS Project
++ * SPDX-License-Identifier: Apache-2.0
++ */
++
++package com.android.dialer.callscreening.rule
++
++import com.android.dialer.numberinfo.NumberNormalizer
++
++/**
++ * Canonical form of [BlockRule.value] for each [RuleType].
++ *
++ * Incoming numbers are canonicalized by [NumberNormalizer] before matching, so
++ * rule values must use the same form — otherwise a blacklist entry pasted as
++ * "+86 138 0013 8000" can never equal the incoming "13800138000".
++ *
++ * Applied when a rule is saved or imported, and again at match time so rows
++ * written by older builds (stored verbatim) keep working without a migration.
++ * Pure logic, no Android dependencies.
++ */
++object RuleValues {
++
++    /** @return the canonical value, or null when [raw] is not usable for [type]. */
++    @JvmStatic
++    fun normalize(type: RuleType, raw: String?): String? {
++        val value = raw?.trim().orEmpty()
++        if (value.isEmpty()) return null
++        return when (type) {
++            RuleType.PREFIX -> NumberNormalizer.normalizePrefix(value)
++            RuleType.BLACKLIST, RuleType.WHITELIST ->
++                if (value.endsWith("*")) {
++                    // "1380013*" prefix form: canonicalize the prefix, keep the marker.
++                    NumberNormalizer.normalizePrefix(value.trimEnd('*'))?.let { "$it*" }
++                } else {
++                    NumberNormalizer.normalize(value)
++                }
++            RuleType.LOCATION -> value
++            RuleType.MARK_TYPE -> value.split(',', '，')
++                .map { it.trim() }
++                .filter { it.isNotEmpty() }
++                .distinct()
++                .joinToString(",")
++                .ifEmpty { null }
++        }
++    }
++}
+diff --git a/java/com/android/dialer/callscreening/ui/BlockRuleEditorActivity.kt b/java/com/android/dialer/callscreening/ui/BlockRuleEditorActivity.kt
+index 21e1ac4a0..db66cdb5f 100644
+--- a/java/com/android/dialer/callscreening/ui/BlockRuleEditorActivity.kt
++++ b/java/com/android/dialer/callscreening/ui/BlockRuleEditorActivity.kt
+@@ -15,6 +15,7 @@ import com.android.dialer.callscreening.ScreeningComponent
+ import com.android.dialer.callscreening.rule.BlockRule
+ import com.android.dialer.callscreening.rule.CommonPrefixes
+ import com.android.dialer.callscreening.rule.RuleType
++import com.android.dialer.callscreening.rule.RuleValues
+ import com.android.dialer.numberinfo.MarkType
+ import com.google.android.material.button.MaterialButton
+ import com.google.android.material.chip.Chip
+@@ -200,15 +201,23 @@ class BlockRuleEditorActivity : AppCompatActivity() {
+ 
+     private fun save() {
+         val type = selectedType()
+-        val value = if (type == RuleType.MARK_TYPE) {
++        val raw = if (type == RuleType.MARK_TYPE) {
+             selectedMarkTypesCsv()
+         } else {
+             valueInput.text?.toString()?.trim().orEmpty()
+         }
+-        if (value.isBlank()) {
++        if (raw.isBlank()) {
+             Toast.makeText(this, R.string.block_rule_value_missing, Toast.LENGTH_SHORT).show()
+             return
+         }
++        // Store the canonical form so the rule matches incoming numbers, which
++        // are canonicalized the same way ("+86 138 0013 8000" -> "13800138000").
++        val value = RuleValues.normalize(type, raw)
++        if (value == null) {
++            valueLayout.error = getString(R.string.block_rule_value_invalid)
++            return
++        }
++        valueLayout.error = null
+         val note = noteInput.text?.toString()?.trim()?.takeIf { it.isNotBlank() }
+         scope.launch {
+             withContext(Dispatchers.IO) {
+diff --git a/javatests/com/android/dialer/callscreening/ScreeningDecisionEngineTest.kt b/javatests/com/android/dialer/callscreening/ScreeningDecisionEngineTest.kt
+index ff2c56bd4..ba470a75c 100644
+--- a/javatests/com/android/dialer/callscreening/ScreeningDecisionEngineTest.kt
++++ b/javatests/com/android/dialer/callscreening/ScreeningDecisionEngineTest.kt
+@@ -22,6 +22,56 @@ class ScreeningDecisionEngineTest {
+     private val engine = ScreeningDecisionEngine()
+     private val n = "17012345678"
+ 
++    // -- rule values typed/pasted in non-canonical form --------------------------
++
++    @Test
++    fun blacklist_ruleValueWithCountryCodeAndSpaces_matches() {
++        val d = engine.decide(
++            "13800138000", null,
++            listOf(rule(RuleType.BLACKLIST, "+86 138 0013 8000")), ScreeningMode.BLACKLIST)
++        assertEquals(Action.BLOCK, d.action)
++    }
++
++    @Test
++    fun blacklist_wildcardWithSeparators_matches() {
++        val d = engine.decide(
++            "13800138000", null,
++            listOf(rule(RuleType.BLACKLIST, "+86 138-0013*")), ScreeningMode.BLACKLIST)
++        assertEquals(Action.BLOCK, d.action)
++    }
++
++    @Test
++    fun whitelist_ruleValueWithSeparators_matches() {
++        val d = engine.decide(
++            "13800138000", null,
++            listOf(rule(RuleType.WHITELIST, "138-0013-8000")), ScreeningMode.WHITELIST)
++        assertEquals(Action.ALLOW, d.action)
++    }
++
++    @Test
++    fun prefix_areaCodeMatchesE164Landline() {
++        // Telecom often delivers landlines in E.164 form.
++        val number = com.android.dialer.numberinfo.NumberNormalizer.normalize("+861012345678")!!
++        val d = engine.decide(
++            number, null, listOf(rule(RuleType.PREFIX, "010")), ScreeningMode.BLACKLIST)
++        assertEquals(Action.BLOCK, d.action)
++    }
++
++    @Test
++    fun prefix_ruleWithCountryCode_matches() {
++        val d = engine.decide(
++            n, null, listOf(rule(RuleType.PREFIX, "+86 170")), ScreeningMode.BLACKLIST)
++        assertEquals(Action.BLOCK, d.action)
++    }
++
++    @Test
++    fun prefix_bareCountryCodeRule_neverMatchesEverything() {
++        // "+86" alone must not degrade into an empty prefix that matches all numbers.
++        val d = engine.decide(
++            "13800138000", null, listOf(rule(RuleType.PREFIX, "+86")), ScreeningMode.BLACKLIST)
++        assertEquals(Action.ALLOW, d.action)
++    }
++
+     private fun rule(
+         type: RuleType, value: String, id: Long = 1L, enabled: Boolean = true,
+     ) = BlockRule(id = id, type = type, value = value, enabled = enabled)
+diff --git a/javatests/com/android/dialer/callscreening/rule/RulePorterTest.kt b/javatests/com/android/dialer/callscreening/rule/RulePorterTest.kt
+index 09fd94c0a..4ba32b6ce 100644
+--- a/javatests/com/android/dialer/callscreening/rule/RulePorterTest.kt
++++ b/javatests/com/android/dialer/callscreening/rule/RulePorterTest.kt
+@@ -89,6 +89,37 @@ class RulePorterTest {
+         assertNull(RulePorter.parse(json).rules[0].note)
+     }
+ 
++    @Test
++    fun parse_normalizesValues() {
++        val json = """
++            { "formatVersion": 1, "rules": [
++              { "type": "BLACKLIST", "value": "+86 138 0013 8000" },
++              { "type": "PREFIX", "value": "+86 10" },
++              { "type": "WHITELIST", "value": "0086-139 0000*" },
++              { "type": "MARK_TYPE", "value": " fraud , telemarketing,fraud" }
++            ] }
++        """.trimIndent()
++        val result = RulePorter.parse(json)
++        assertEquals(0, result.skipped)
++        assertEquals(
++            listOf("13800138000", "010", "1390000*", "fraud,telemarketing"),
++            result.rules.map { it.value })
++    }
++
++    @Test
++    fun parse_skipsValuesThatAreNotNumbers() {
++        val json = """
++            { "formatVersion": 1, "rules": [
++              { "type": "BLACKLIST", "value": "abc" },
++              { "type": "PREFIX", "value": "+86" },
++              { "type": "PREFIX", "value": "170" }
++            ] }
++        """.trimIndent()
++        val result = RulePorter.parse(json)
++        assertEquals(2, result.skipped)
++        assertEquals(listOf("170"), result.rules.map { it.value })
++    }
++
+     @Test
+     fun export_emptyListIsValid() {
+         val result = RulePorter.parse(RulePorter.export(emptyList()))
+diff --git a/javatests/com/android/dialer/callscreening/rule/RuleValuesTest.kt b/javatests/com/android/dialer/callscreening/rule/RuleValuesTest.kt
+new file mode 100644
+index 000000000..ee47aa249
+--- /dev/null
++++ b/javatests/com/android/dialer/callscreening/rule/RuleValuesTest.kt
+@@ -0,0 +1,72 @@
++/*
++ * SPDX-FileCopyrightText: 2026 The LineageOS Project
++ * SPDX-License-Identifier: Apache-2.0
++ */
++
++package com.android.dialer.callscreening.rule
++
++import org.junit.Assert.assertEquals
++import org.junit.Assert.assertNull
++import org.junit.Test
++
++class RuleValuesTest {
++
++    private fun norm(type: RuleType, raw: String?) = RuleValues.normalize(type, raw)
++
++    @Test
++    fun blacklist_exactNumbersAreCanonicalized() {
++        assertEquals("13800138000", norm(RuleType.BLACKLIST, "+86 138 0013 8000"))
++        assertEquals("13800138000", norm(RuleType.BLACKLIST, "138-0013-8000"))
++        assertEquals("13800138000", norm(RuleType.BLACKLIST, "１３８００１３８０００")) // full-width
++        assertEquals("01012345678", norm(RuleType.BLACKLIST, "+86 10 1234 5678"))
++        assertEquals("+14155550100", norm(RuleType.WHITELIST, "001 415 555 0100"))
++    }
++
++    @Test
++    fun blacklist_prefixFormKeepsTrailingStar() {
++        assertEquals("1380013*", norm(RuleType.BLACKLIST, "138 0013*"))
++        assertEquals("1380013*", norm(RuleType.WHITELIST, "+86 138-0013 *"))
++        assertEquals("010*", norm(RuleType.BLACKLIST, "+86 10*"))
++    }
++
++    @Test
++    fun blacklist_unusableValuesAreRejected() {
++        assertNull(norm(RuleType.BLACKLIST, "abc"))
++        assertNull(norm(RuleType.BLACKLIST, "*"))
++        assertNull(norm(RuleType.BLACKLIST, "+86"))
++        assertNull(norm(RuleType.WHITELIST, "  "))
++        assertNull(norm(RuleType.WHITELIST, null))
++    }
++
++    @Test
++    fun prefix_isCanonicalizedLikeNumbers() {
++        assertEquals("170", norm(RuleType.PREFIX, " 170 "))
++        assertEquals("170", norm(RuleType.PREFIX, "+86 170"))
++        assertEquals("010", norm(RuleType.PREFIX, "+86 10"))
++        assertEquals("0755", norm(RuleType.PREFIX, "0086-755"))
++        assertEquals("400", norm(RuleType.PREFIX, "+86 400"))
++        assertEquals("+1", norm(RuleType.PREFIX, "+1"))
++    }
++
++    @Test
++    fun prefix_bareCountryCodeIsRejected() {
++        // Would otherwise become "" and match every number.
++        assertNull(norm(RuleType.PREFIX, "+86"))
++        assertNull(norm(RuleType.PREFIX, "0086"))
++        assertNull(norm(RuleType.PREFIX, "-"))
++    }
++
++    @Test
++    fun location_isTrimmedOnly() {
++        assertEquals("北京", norm(RuleType.LOCATION, " 北京 "))
++        assertEquals("广东 移动", norm(RuleType.LOCATION, "广东 移动"))
++    }
++
++    @Test
++    fun markType_csvIsCleanedUp() {
++        assertEquals("fraud,telemarketing",
++            norm(RuleType.MARK_TYPE, " fraud , telemarketing,fraud"))
++        assertEquals("fraud,debt", norm(RuleType.MARK_TYPE, "fraud，debt")) // full-width comma
++        assertNull(norm(RuleType.MARK_TYPE, " , "))
++    }
++}
+-- 
+2.47.3
+
+
+From 15caf5755fc3fc3312d545b6e8c7df959c9cab72 Mon Sep 17 00:00:00 2001
+From: gx-bangsong <146644201+gx-bangsong@users.noreply.github.com>
+Date: Sun, 11 Oct 2026 05:23:08 +0000
+Subject: [PATCH 3/4] numberinfo: enforce lookup time budgets on blocking
+ network I/O
+
+The per-source (800ms) and total (3.5s) screening budgets were applied
+with withTimeoutOrNull around HttpURLConnection calls. Blocking socket
+I/O ignores coroutine cancellation, so a stalled source held a lookup
+for its full connect/read timeouts (3s + 3s per rules.json) and the
+late result was still used. Measured against a black-hole server: 3.0s
+for an 800ms budget. Telecom gives the screening service ~5s.
+
+- HttpFetcher.fetch() is now suspending and cancellable: the I/O runs on
+  an executor, cancellation returns immediately and disconnects the
+  connection (aborting a blocked connect/read); the body read is also
+  capped at 2x timeoutMs. fetchBlocking() keeps the old behaviour for
+  RuleRepository.
+- awaitWithin() bounds the wait rather than the work; ProviderManager
+  uses it per source (now 0.8s against the same server).
+- DialerCallScreeningService answers Telecom within TOTAL_BUDGET_MS no
+  matter what, responds before persisting the blocked-call record, and
+  fails open if setup throws.
+---
+ .../DialerCallScreeningService.kt             |  19 ++-
+ .../android/dialer/numberinfo/Deadlines.kt    |  38 ++++++
+ .../dialer/numberinfo/net/HttpFetcher.kt      |  91 +++++++++++++--
+ .../numberinfo/provider/ProviderManager.kt    |  25 ++--
+ .../dialer/numberinfo/rules/RuleRepository.kt |   2 +-
+ javatests/AndroidManifest.xml                 |   3 +-
+ .../dialer/numberinfo/DeadlinesTest.kt        |  56 +++++++++
+ .../dialer/numberinfo/net/HttpFetcherTest.kt  | 108 ++++++++++++++++++
+ .../provider/ProviderManagerTest.kt           |  14 +++
+ .../provider/RuleBasedWebProviderTest.kt      |   4 +-
+ 10 files changed, 337 insertions(+), 23 deletions(-)
+ create mode 100644 java/com/android/dialer/numberinfo/Deadlines.kt
+ create mode 100644 javatests/com/android/dialer/numberinfo/DeadlinesTest.kt
+ create mode 100644 javatests/com/android/dialer/numberinfo/net/HttpFetcherTest.kt
+
+diff --git a/java/com/android/dialer/callscreening/DialerCallScreeningService.kt b/java/com/android/dialer/callscreening/DialerCallScreeningService.kt
+index c50868ccd..2754058be 100644
+--- a/java/com/android/dialer/callscreening/DialerCallScreeningService.kt
++++ b/java/com/android/dialer/callscreening/DialerCallScreeningService.kt
+@@ -11,6 +11,7 @@ import com.android.dialer.callscreening.record.BlockedCallRecord
+ import com.android.dialer.numberinfo.NumberInfoComponent
+ import com.android.dialer.numberinfo.NumberInfoLog
+ import com.android.dialer.numberinfo.NumberNormalizer
++import com.android.dialer.numberinfo.awaitWithin
+ import com.android.dialer.numberinfo.provider.ProviderManager
+ import com.android.dialer.callscreening.rule.ScreeningMode
+ import kotlinx.coroutines.CoroutineScope
+@@ -18,7 +19,6 @@ import kotlinx.coroutines.Dispatchers
+ import kotlinx.coroutines.SupervisorJob
+ import kotlinx.coroutines.cancel
+ import kotlinx.coroutines.launch
+-import kotlinx.coroutines.withTimeoutOrNull
+ import org.json.JSONObject
+ 
+ /**
+@@ -32,6 +32,8 @@ import org.json.JSONObject
+  *   - online phase: only when a MARK_TYPE rule exists and nothing local
+  *     decided; hard-capped at [ONLINE_BUDGET_MS] per source and
+  *     [TOTAL_BUDGET_MS] overall — on timeout we fail open (allow).
++ *   - the total budget bounds the *wait* ([awaitWithin]), so blocking work
++ *     (DNS, sockets, SQLite, contacts) can never delay the response past it.
+  *
+  * Decisions themselves are delegated to the pure [ScreeningDecisionEngine].
+  */
+@@ -41,6 +43,16 @@ class DialerCallScreeningService : CallScreeningService() {
+     private val engine = ScreeningDecisionEngine()
+ 
+     override fun onScreenCall(callDetails: Call.Details) {
++        try {
++            screen(callDetails)
++        } catch (e: Exception) {
++            // Never leave Telecom waiting on an exception: fail open.
++            NumberInfoLog.w("screening setup failed, failing open", e)
++            respondAllow(callDetails)
++        }
++    }
++
++    private fun screen(callDetails: Call.Details) {
+         // Only incoming calls are screened; anything else is allowed through.
+         if (callDetails.callDirection != Call.Details.DIRECTION_INCOMING) {
+             respondAllow(callDetails)
+@@ -65,7 +77,7 @@ class DialerCallScreeningService : CallScreeningService() {
+ 
+         scope.launch {
+             val decision = try {
+-                withTimeoutOrNull(TOTAL_BUDGET_MS) {
++                awaitWithin(TOTAL_BUDGET_MS, scope) {
+                     decide(component, screening, number)
+                 } ?: ScreeningDecisionEngine.Decision(
+                     ScreeningDecisionEngine.Action.ALLOW, null, "TIMEOUT:fail-open")
+@@ -76,7 +88,7 @@ class DialerCallScreeningService : CallScreeningService() {
+             }
+ 
+             if (decision.blocked) {
+-                recordBlockedCall(screening, component, number, decision)
++                // Answer Telecom first; bookkeeping must not eat into its deadline.
+                 respondToCall(
+                     callDetails,
+                     CallResponse.Builder()
+@@ -87,6 +99,7 @@ class DialerCallScreeningService : CallScreeningService() {
+                         .build())
+                 NumberInfoLog.i("blocked "
+                         + NumberNormalizer.maskForLog(number) + " (${decision.summary})")
++                recordBlockedCall(screening, component, number, decision)
+             } else {
+                 respondAllow(callDetails)
+             }
+diff --git a/java/com/android/dialer/numberinfo/Deadlines.kt b/java/com/android/dialer/numberinfo/Deadlines.kt
+new file mode 100644
+index 000000000..839dd1fad
+--- /dev/null
++++ b/java/com/android/dialer/numberinfo/Deadlines.kt
+@@ -0,0 +1,38 @@
++/*
++ * SPDX-FileCopyrightText: 2026 The LineageOS Project
++ * SPDX-License-Identifier: Apache-2.0
++ */
++
++package com.android.dialer.numberinfo
++
++import kotlinx.coroutines.CoroutineScope
++import kotlinx.coroutines.async
++import kotlinx.coroutines.withTimeoutOrNull
++
++/**
++ * Runs [block] in [scope] and waits at most [timeoutMs] for its result.
++ *
++ * Unlike a plain `withTimeoutOrNull { block() }`, this returns on time even
++ * when [block] is stuck in non-cancellable blocking work — DNS resolution,
++ * HttpURLConnection connect/read, SQLite or ContentResolver calls — because
++ * the work runs detached (not as a child of the caller) and only the *wait*
++ * is bounded. On timeout the work is cancelled best-effort and abandoned; its
++ * eventual result is discarded.
++ *
++ * @param scope must be backed by a SupervisorJob (so a failing block cannot
++ *   cancel the scope) and a dispatcher that may block, e.g. Dispatchers.IO.
++ * @return the block's result, or null on timeout. Exceptions thrown by
++ *   [block] are rethrown to the caller.
++ */
++suspend fun <T> awaitWithin(
++    timeoutMs: Long,
++    scope: CoroutineScope,
++    block: suspend CoroutineScope.() -> T,
++): T? {
++    val work = scope.async(block = block)
++    try {
++        return withTimeoutOrNull(timeoutMs) { work.await() }
++    } finally {
++        if (!work.isCompleted) work.cancel()
++    }
++}
+diff --git a/java/com/android/dialer/numberinfo/net/HttpFetcher.kt b/java/com/android/dialer/numberinfo/net/HttpFetcher.kt
+index d60a63acd..6523f6710 100644
+--- a/java/com/android/dialer/numberinfo/net/HttpFetcher.kt
++++ b/java/com/android/dialer/numberinfo/net/HttpFetcher.kt
+@@ -9,20 +9,40 @@ import java.io.ByteArrayOutputStream
+ import java.io.IOException
+ import java.io.InputStream
+ import java.net.HttpURLConnection
++import java.net.SocketTimeoutException
+ import java.net.URL
+ import java.nio.charset.Charset
++import java.util.concurrent.Executor
++import java.util.concurrent.atomic.AtomicBoolean
+ import java.util.zip.GZIPInputStream
++import kotlinx.coroutines.Dispatchers
++import kotlinx.coroutines.asExecutor
++import kotlinx.coroutines.suspendCancellableCoroutine
+ 
+ /**
+- * Minimal HTTP fetcher used by rule-based providers. Blocking; must only be
+- * called from Dispatchers.IO. Throws [IOException] on network failure so the
+- * caller can distinguish "network failed" (do not negative-cache) from
+- * "fetched fine but no data" (negative-cache).
++ * Minimal HTTP fetcher used by rule-based providers. Throws [IOException] on
++ * network failure so the caller can distinguish "network failed" (do not
++ * negative-cache) from "fetched fine but no data" (negative-cache).
++ *
++ * Two entry points:
++ *  - [fetch] (suspending) is what latency-bounded callers use. Blocking
++ *    socket I/O cannot be interrupted by coroutine cancellation (nor by
++ *    Thread.interrupt), so the I/O runs on [executor] and cancellation both
++ *    returns to the caller immediately and disconnects the connection, which
++ *    aborts a blocked connect()/read() on the worker thread.
++ *  - [fetchBlocking] for plain background threads (e.g. rule updates).
+  */
+-open class HttpFetcher {
++open class HttpFetcher(
++    private val executor: Executor = Dispatchers.IO.asExecutor(),
++) {
+ 
++    /**
++     * Cancellable fetch. Cancelling the calling coroutine (e.g. an expired
++     * withTimeout budget) makes this throw CancellationException right away
++     * and aborts the in-flight request.
++     */
+     @Throws(IOException::class)
+-    open fun fetch(
++    open suspend fun fetch(
+         url: String,
+         method: String = "GET",
+         headers: Map<String, String> = emptyMap(),
+@@ -30,8 +50,59 @@ open class HttpFetcher {
+         timeoutMs: Int = DEFAULT_TIMEOUT_MS,
+         maxBytes: Int = DEFAULT_MAX_BYTES,
+     ): String {
+-        val conn = URL(url).openConnection() as HttpURLConnection
++        val conn = openConnection(url) // no network I/O happens before connect()
++        val cancelled = AtomicBoolean(false)
++        return suspendCancellableCoroutine { cont ->
++            cont.invokeOnCancellation {
++                cancelled.set(true)
++                // Safe from another thread; closes the socket under a blocked read.
++                // (DNS lookups can't be aborted; they end on their own while the
++                // caller has long moved on.)
++                try {
++                    conn.disconnect()
++                } catch (ignored: Exception) {
++                }
++            }
++            executor.execute {
++                val result = runCatching {
++                    execute(conn, method, headers, charset, timeoutMs, maxBytes, cancelled)
++                }
++                cont.resumeWith(result) // dropped if the caller was cancelled meanwhile
++            }
++        }
++    }
++
++    /** Blocking fetch; call from a background thread only. */
++    @Throws(IOException::class)
++    open fun fetchBlocking(
++        url: String,
++        method: String = "GET",
++        headers: Map<String, String> = emptyMap(),
++        charset: String = "UTF-8",
++        timeoutMs: Int = DEFAULT_TIMEOUT_MS,
++        maxBytes: Int = DEFAULT_MAX_BYTES,
++    ): String = execute(openConnection(url), method, headers, charset, timeoutMs, maxBytes, null)
++
++    protected open fun openConnection(url: String): HttpURLConnection =
++        URL(url).openConnection() as HttpURLConnection
++
++    private fun execute(
++        conn: HttpURLConnection,
++        method: String,
++        headers: Map<String, String>,
++        charset: String,
++        timeoutMs: Int,
++        maxBytes: Int,
++        cancelled: AtomicBoolean?,
++    ): String {
++        fun checkCancelled() {
++            if (cancelled?.get() == true) throw IOException("request cancelled")
++        }
++        // readTimeout bounds each read() call, not the whole body; a slowly
++        // dripping server could otherwise hold the worker for a long time.
++        val deadlineNanos = System.nanoTime() + 2L * timeoutMs * 1_000_000L
+         try {
++            checkCancelled()
+             conn.requestMethod = method
+             conn.connectTimeout = timeoutMs
+             conn.readTimeout = timeoutMs
+@@ -42,7 +113,7 @@ open class HttpFetcher {
+             }
+             val code = conn.responseCode
+             if (code !in 200..299) {
+-                throw IOException("HTTP $code for host ${URL(url).host}")
++                throw IOException("HTTP $code for host ${conn.url.host}")
+             }
+             val raw: InputStream = conn.inputStream
+             val stream =
+@@ -56,6 +127,10 @@ open class HttpFetcher {
+                 val buf = ByteArray(8192)
+                 var total = 0
+                 while (true) {
++                    checkCancelled()
++                    if (System.nanoTime() > deadlineNanos) {
++                        throw SocketTimeoutException("body not received within ${2 * timeoutMs}ms")
++                    }
+                     val n = input.read(buf)
+                     if (n < 0) break
+                     total += n
+diff --git a/java/com/android/dialer/numberinfo/provider/ProviderManager.kt b/java/com/android/dialer/numberinfo/provider/ProviderManager.kt
+index 7b4633157..381463eab 100644
+--- a/java/com/android/dialer/numberinfo/provider/ProviderManager.kt
++++ b/java/com/android/dialer/numberinfo/provider/ProviderManager.kt
+@@ -8,20 +8,29 @@ package com.android.dialer.numberinfo.provider
+ import com.android.dialer.numberinfo.NumberInfo
+ import com.android.dialer.numberinfo.NumberInfoLog
+ import com.android.dialer.numberinfo.NumberNormalizer
++import com.android.dialer.numberinfo.awaitWithin
+ import com.android.dialer.numberinfo.settings.NumberInfoSettings
++import kotlinx.coroutines.CoroutineScope
++import kotlinx.coroutines.Dispatchers
++import kotlinx.coroutines.SupervisorJob
+ import kotlinx.coroutines.async
+ import kotlinx.coroutines.supervisorScope
+-import kotlinx.coroutines.withTimeoutOrNull
+ 
+ /**
+  * Registry + query orchestrator for all [NumberInfoProvider]s.
+  *
+  * Fault isolation: online sources are queried concurrently inside a
+- * supervisorScope; each source gets its own try-catch AND its own
+- * [withTimeoutOrNull] budget, so a hung or crashing source can neither
+- * block nor cancel its siblings.
++ * supervisorScope; each source gets its own try-catch AND its own hard time
++ * budget ([awaitWithin]), so a hung or crashing source can neither block nor
++ * cancel its siblings. The budget holds even when a source is stuck in
++ * blocking I/O: its work runs detached in [workScope] and is abandoned (and
++ * cancelled, which aborts HttpFetcher requests) when the budget expires.
+  */
+-class ProviderManager(private val settings: NumberInfoSettings) {
++class ProviderManager(
++    private val settings: NumberInfoSettings,
++    /** Owns in-flight provider work; must be SupervisorJob-backed. */
++    private val workScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
++) {
+ 
+     private val providers = ArrayList<NumberInfoProvider>()
+ 
+@@ -43,8 +52,8 @@ class ProviderManager(private val settings: NumberInfoSettings) {
+         providers.filter { !it.isOnline && it.isEnabled(settings) }
+ 
+     /**
+-     * Queries all enabled online providers concurrently. Runs on the caller's
+-     * dispatcher — callers must be on Dispatchers.IO.
++     * Queries all enabled online providers concurrently and returns within
++     * roughly [perSourceTimeoutMs], whatever the providers do.
+      *
+      * @param perSourceTimeoutMs hard budget per source; the call-screening path
+      *   passes a small value (~800ms), the in-call refresh path a larger one.
+@@ -61,7 +70,7 @@ class ProviderManager(private val settings: NumberInfoSettings) {
+             targets.map { provider ->
+                 async {
+                     try {
+-                        withTimeoutOrNull(perSourceTimeoutMs) {
++                        awaitWithin(perSourceTimeoutMs, workScope) {
+                             provider.query(number)
+                         }
+                     } catch (e: Exception) {
+diff --git a/java/com/android/dialer/numberinfo/rules/RuleRepository.kt b/java/com/android/dialer/numberinfo/rules/RuleRepository.kt
+index fb025c723..47da842e8 100644
+--- a/java/com/android/dialer/numberinfo/rules/RuleRepository.kt
++++ b/java/com/android/dialer/numberinfo/rules/RuleRepository.kt
+@@ -55,7 +55,7 @@ class RuleRepository(
+     @Throws(IOException::class)
+     fun updateFromRemote(explicitUrl: String? = null): Boolean {
+         val url = explicitUrl ?: get().ruleUpdateUrl ?: return false
+-        val body = fetcher.fetch(url, timeoutMs = 10_000)
++        val body = fetcher.fetchBlocking(url, timeoutMs = 10_000)
+         val parsed = try {
+             RuleSet.parse(body) // full validation before anything is written
+         } catch (e: Exception) {
+diff --git a/javatests/AndroidManifest.xml b/javatests/AndroidManifest.xml
+index 96bfc6bc8..6651c1e47 100644
+--- a/javatests/AndroidManifest.xml
++++ b/javatests/AndroidManifest.xml
+@@ -8,7 +8,8 @@
+ 
+     <uses-permission android:name="android.permission.INTERNET" />
+ 
+-    <application />
++    <!-- HttpFetcherTest talks to a loopback server over plain HTTP. -->
++    <application android:usesCleartextTraffic="true" />
+ 
+     <instrumentation
+         android:name="androidx.test.runner.AndroidJUnitRunner"
+diff --git a/javatests/com/android/dialer/numberinfo/DeadlinesTest.kt b/javatests/com/android/dialer/numberinfo/DeadlinesTest.kt
+new file mode 100644
+index 000000000..1d32c79d7
+--- /dev/null
++++ b/javatests/com/android/dialer/numberinfo/DeadlinesTest.kt
+@@ -0,0 +1,56 @@
++/*
++ * SPDX-FileCopyrightText: 2026 The LineageOS Project
++ * SPDX-License-Identifier: Apache-2.0
++ */
++
++package com.android.dialer.numberinfo
++
++import java.io.IOException
++import kotlinx.coroutines.CoroutineScope
++import kotlinx.coroutines.Dispatchers
++import kotlinx.coroutines.SupervisorJob
++import kotlinx.coroutines.cancel
++import kotlinx.coroutines.runBlocking
++import org.junit.After
++import org.junit.Assert.assertEquals
++import org.junit.Assert.assertNull
++import org.junit.Assert.assertTrue
++import org.junit.Assert.fail
++import org.junit.Test
++
++class DeadlinesTest {
++
++    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
++
++    @After
++    fun tearDown() {
++        scope.cancel()
++    }
++
++    @Test
++    fun awaitWithin_returnsResultOfFastBlock() = runBlocking {
++        assertEquals("ok", awaitWithin(1_000, scope) { "ok" })
++    }
++
++    @Test
++    fun awaitWithin_returnsOnTime_evenWhenBlockIsStuckInBlockingCall() = runBlocking {
++        val started = System.nanoTime()
++        // Thread.sleep stands in for DNS / socket reads / binder calls that
++        // ignore coroutine cancellation.
++        val result = awaitWithin(200, scope) { Thread.sleep(3_000); "late" }
++        val elapsedMs = (System.nanoTime() - started) / 1_000_000
++        assertNull(result)
++        assertTrue("waited ${elapsedMs}ms for a 200ms budget", elapsedMs < 1_000)
++    }
++
++    @Test
++    fun awaitWithin_rethrowsBlockFailure() = runBlocking {
++        try {
++            awaitWithin(1_000, scope) { throw IOException("boom") }
++            fail("expected IOException")
++        } catch (expected: IOException) {
++        }
++        // A failing block must not cancel the shared scope.
++        assertEquals(1, awaitWithin(1_000, scope) { 1 })
++    }
++}
+diff --git a/javatests/com/android/dialer/numberinfo/net/HttpFetcherTest.kt b/javatests/com/android/dialer/numberinfo/net/HttpFetcherTest.kt
+new file mode 100644
+index 000000000..c43e9054d
+--- /dev/null
++++ b/javatests/com/android/dialer/numberinfo/net/HttpFetcherTest.kt
+@@ -0,0 +1,108 @@
++/*
++ * SPDX-FileCopyrightText: 2026 The LineageOS Project
++ * SPDX-License-Identifier: Apache-2.0
++ */
++
++package com.android.dialer.numberinfo.net
++
++import java.io.IOException
++import java.net.InetAddress
++import java.net.ServerSocket
++import java.net.Socket
++import java.util.concurrent.CountDownLatch
++import java.util.concurrent.TimeUnit
++import kotlin.concurrent.thread
++import kotlinx.coroutines.runBlocking
++import kotlinx.coroutines.withTimeoutOrNull
++import org.junit.After
++import org.junit.Assert.assertEquals
++import org.junit.Assert.assertNull
++import org.junit.Assert.assertTrue
++import org.junit.Assert.fail
++import org.junit.Before
++import org.junit.Test
++
++/** Exercises the real HttpURLConnection path against a loopback server. */
++class HttpFetcherTest {
++
++    private lateinit var server: ServerSocket
++
++    @Before
++    fun setUp() {
++        server = ServerSocket(0, 50, InetAddress.getLoopbackAddress())
++    }
++
++    @After
++    fun tearDown() {
++        server.close()
++    }
++
++    private fun url() = "http://127.0.0.1:${server.localPort}/s?q=1"
++
++    /** Accepts one connection, consumes the request head, then hands the socket to [respond]. */
++    private fun serveOnce(respond: (Socket) -> Unit) = thread(isDaemon = true) {
++        try {
++            server.accept().use { socket ->
++                val input = socket.getInputStream()
++                var tail = 0
++                while (tail != 0x0d0a0d0a) { // read up to and including "\r\n\r\n"
++                    val b = input.read()
++                    if (b < 0) return@thread
++                    tail = (tail shl 8) or b
++                }
++                respond(socket)
++            }
++        } catch (e: IOException) {
++            // server closed by tearDown
++        }
++    }
++
++    private fun Socket.writeResponse(status: String, body: ByteArray) {
++        getOutputStream().apply {
++            write(("HTTP/1.1 $status\r\nContent-Type: text/html; charset=utf-8\r\n" +
++                "Content-Length: ${body.size}\r\nConnection: close\r\n\r\n").toByteArray())
++            write(body)
++            flush()
++        }
++    }
++
++    @Test
++    fun fetch_returnsDecodedBody() = runBlocking {
++        val body = "该号码被1283人标记为诈骗电话"
++        serveOnce { it.writeResponse("200 OK", body.toByteArray(Charsets.UTF_8)) }
++        assertEquals(body, HttpFetcher().fetch(url(), timeoutMs = 5_000))
++    }
++
++    @Test
++    fun fetch_httpError_throwsIOException() = runBlocking {
++        serveOnce { it.writeResponse("500 Internal Server Error", ByteArray(0)) }
++        try {
++            HttpFetcher().fetch(url(), timeoutMs = 5_000)
++            fail("expected IOException")
++        } catch (expected: IOException) {
++        }
++    }
++
++    @Test
++    fun fetch_cancelledCaller_returnsPromptly_andAbortsConnection() = runBlocking {
++        val clientGone = CountDownLatch(1)
++        serveOnce { socket ->
++            // Never answer; just wait for the client side to go away.
++            socket.soTimeout = 15_000
++            try {
++                if (socket.getInputStream().read() < 0) clientGone.countDown()
++            } catch (e: IOException) {
++                clientGone.countDown() // reset by peer also means "aborted"
++            }
++        }
++        val started = System.nanoTime()
++        val result = withTimeoutOrNull(300) {
++            HttpFetcher().fetch(url(), timeoutMs = 8_000)
++        }
++        val elapsedMs = (System.nanoTime() - started) / 1_000_000
++        assertNull(result)
++        assertTrue("fetch ignored cancellation for ${elapsedMs}ms", elapsedMs < 2_000)
++        assertTrue("connection was left open after cancellation",
++            clientGone.await(3, TimeUnit.SECONDS))
++    }
++}
+diff --git a/javatests/com/android/dialer/numberinfo/provider/ProviderManagerTest.kt b/javatests/com/android/dialer/numberinfo/provider/ProviderManagerTest.kt
+index 00b311e5f..895f30f85 100644
+--- a/javatests/com/android/dialer/numberinfo/provider/ProviderManagerTest.kt
++++ b/javatests/com/android/dialer/numberinfo/provider/ProviderManagerTest.kt
+@@ -104,6 +104,20 @@ class ProviderManagerTest {
+         assertEquals(listOf("local"), out.map { it.source })
+     }
+ 
++    @Test
++    fun queryOnline_blockingSourceIsTimedOutOnTime() = runBlocking {
++        // Real sources block inside HttpURLConnection (DNS, connect, read), which
++        // withTimeoutOrNull alone cannot interrupt. The budget must still hold.
++        val pm = ProviderManager(settings)
++        pm.register(fakeProvider("blocking") { Thread.sleep(3_000); result("blocking") })
++        pm.register(fakeProvider("fast") { result("fast") })
++        val started = System.nanoTime()
++        val out = pm.queryOnline("1", perSourceTimeoutMs = 300)
++        val elapsedMs = (System.nanoTime() - started) / 1_000_000
++        assertEquals(listOf("fast"), out.map { it.source })
++        assertTrue("queryOnline took ${elapsedMs}ms with a 300ms budget", elapsedMs < 1_500)
++    }
++
+     @Test(expected = IllegalArgumentException::class)
+     fun register_duplicateIdRejected() {
+         val pm = ProviderManager(settings)
+diff --git a/javatests/com/android/dialer/numberinfo/provider/RuleBasedWebProviderTest.kt b/javatests/com/android/dialer/numberinfo/provider/RuleBasedWebProviderTest.kt
+index 8d1e8acc8..d2bb8d692 100644
+--- a/javatests/com/android/dialer/numberinfo/provider/RuleBasedWebProviderTest.kt
++++ b/javatests/com/android/dialer/numberinfo/provider/RuleBasedWebProviderTest.kt
+@@ -50,7 +50,7 @@ class RuleBasedWebProviderTest {
+         private val failure: IOException? = null,
+     ) : HttpFetcher() {
+         var lastUrl: String? = null
+-        override fun fetch(
++        override suspend fun fetch(
+             url: String, method: String, headers: Map<String, String>,
+             charset: String, timeoutMs: Int, maxBytes: Int,
+         ): String {
+@@ -108,7 +108,7 @@ class RuleBasedWebProviderTest {
+     @Test
+     fun query_neverThrows() = runBlocking {
+         val fetcher = object : HttpFetcher() {
+-            override fun fetch(
++            override suspend fun fetch(
+                 url: String, method: String, headers: Map<String, String>,
+                 charset: String, timeoutMs: Int, maxBytes: Int,
+             ): String = throw IOException("boom")
+-- 
+2.47.3
+
+
+From c7ffc53adda7a1c4f2fd43d7b6a4b8d025d26d48 Mon Sep 17 00:00:00 2001
+From: gx-bangsong <146644201+gx-bangsong@users.noreply.github.com>
+Date: Sun, 11 Oct 2026 05:23:08 +0000
+Subject: [PATCH 4/4] numberinfo: lock online refreshes per number instead of
+ globally
+
+A single repository-wide Mutex serialized online lookups for all
+numbers, so a slow in-call refresh of one number could consume the
+screening budget of the next incoming call from another number.
+
+Refreshes now lock per number (KeyedMutex, entries dropped when idle).
+query() reads the cache after the online phase, so a caller that waited
+for a concurrent refresh of the same number gets its results instead of
+an empty online phase.
+---
+ .../android/dialer/numberinfo/KeyedMutex.kt   | 40 ++++++++++++
+ .../dialer/numberinfo/NumberInfoRepository.kt | 32 +++++----
+ .../dialer/numberinfo/KeyedMutexTest.kt       | 65 +++++++++++++++++++
+ 3 files changed, 125 insertions(+), 12 deletions(-)
+ create mode 100644 java/com/android/dialer/numberinfo/KeyedMutex.kt
+ create mode 100644 javatests/com/android/dialer/numberinfo/KeyedMutexTest.kt
+
+diff --git a/java/com/android/dialer/numberinfo/KeyedMutex.kt b/java/com/android/dialer/numberinfo/KeyedMutex.kt
+new file mode 100644
+index 000000000..7022c0414
+--- /dev/null
++++ b/java/com/android/dialer/numberinfo/KeyedMutex.kt
+@@ -0,0 +1,40 @@
++/*
++ * SPDX-FileCopyrightText: 2026 The LineageOS Project
++ * SPDX-License-Identifier: Apache-2.0
++ */
++
++package com.android.dialer.numberinfo
++
++import kotlinx.coroutines.sync.Mutex
++import kotlinx.coroutines.sync.withLock
++
++/**
++ * One mutex per key. Work for the same key is serialized; work for different
++ * keys never waits on each other. Entries are dropped as soon as no coroutine
++ * holds or waits for them, so memory stays bounded by in-flight keys.
++ */
++internal class KeyedMutex<K : Any> {
++
++    private class Entry {
++        val mutex = Mutex()
++        var users = 0 // guarded by `entries`
++    }
++
++    private val entries = HashMap<K, Entry>()
++
++    suspend fun <T> withLock(key: K, block: suspend () -> T): T {
++        val entry = synchronized(entries) {
++            entries.getOrPut(key) { Entry() }.also { it.users++ }
++        }
++        try {
++            return entry.mutex.withLock { block() }
++        } finally {
++            synchronized(entries) {
++                if (--entry.users == 0) entries.remove(key)
++            }
++        }
++    }
++
++    /** Number of keys currently held or awaited (for tests). */
++    fun activeKeys(): Int = synchronized(entries) { entries.size }
++}
+diff --git a/java/com/android/dialer/numberinfo/NumberInfoRepository.kt b/java/com/android/dialer/numberinfo/NumberInfoRepository.kt
+index ae8f1790c..e8da432f1 100644
+--- a/java/com/android/dialer/numberinfo/NumberInfoRepository.kt
++++ b/java/com/android/dialer/numberinfo/NumberInfoRepository.kt
+@@ -18,8 +18,6 @@ import kotlinx.coroutines.CoroutineScope
+ import kotlinx.coroutines.Dispatchers
+ import kotlinx.coroutines.SupervisorJob
+ import kotlinx.coroutines.launch
+-import kotlinx.coroutines.sync.Mutex
+-import kotlinx.coroutines.sync.withLock
+ import kotlinx.coroutines.withContext
+ 
+ /**
+@@ -43,8 +41,13 @@ class NumberInfoRepository(
+     private val aggregator: NumberInfoAggregator = NumberInfoAggregator(),
+ ) {
+     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+-    /** Serializes per-number online refreshes to avoid duplicate fetches. */
+-    private val refreshMutex = Mutex()
++    /**
++     * Serializes online refreshes of the *same* number (the second caller then
++     * finds fresh cache instead of fetching again). Different numbers never
++     * wait for each other — a slow in-call refresh must not eat the screening
++     * budget of the next incoming call.
++     */
++    private val refreshLocks = KeyedMutex<String>()
+ 
+     fun interface Listener {
+         /** Invoked on an IO thread; hop to main before touching views. */
+@@ -79,19 +82,24 @@ class NumberInfoRepository(
+         if (isContact(number)) return@withContext null
+ 
+         val local = providerManager.queryLocal(number)
+-        val cached = try {
+-            cacheDao.getValid(number, settings.cacheTtlMillis, settings.negativeCacheTtlMillis)
+-        } catch (e: Exception) {
+-            emptyList()
+-        }
+ 
+         var online: List<NumberInfo> = emptyList()
+         if (settings.onlineLookupEnabled) {
+-            online = refreshMutex.withLock {
++            online = refreshLocks.withLock(number) {
+                 fetchAndCacheOnline(number, perSourceTimeoutMs)
+             }
+         }
+-        aggregator.aggregate(number, manualOf(local), local + cached + online)
++        // Read the cache after the online phase so results stored by a
++        // concurrent refresh of this number (which we may have waited for)
++        // are included. Fresh online results win over cached rows per source.
++        val cached = try {
++            cacheDao.getValid(number, settings.cacheTtlMillis, settings.negativeCacheTtlMillis)
++        } catch (e: Exception) {
++            emptyList()
++        }
++        val onlineSources = online.mapTo(HashSet()) { it.source }
++        val merged = online + cached.filter { it.source !in onlineSources }
++        aggregator.aggregate(number, manualOf(local), local + merged)
+     }
+ 
+     /** The manual mark travels through ManualMarkProvider like any source;
+@@ -109,7 +117,7 @@ class NumberInfoRepository(
+         scope.launch {
+             try {
+                 if (isContact(number)) return@launch
+-                val fetched = refreshMutex.withLock {
++                val fetched = refreshLocks.withLock(number) {
+                     fetchAndCacheOnline(number, ProviderManager.DEFAULT_SOURCE_TIMEOUT_MS)
+                 }
+                 if (fetched.isEmpty()) return@launch
+diff --git a/javatests/com/android/dialer/numberinfo/KeyedMutexTest.kt b/javatests/com/android/dialer/numberinfo/KeyedMutexTest.kt
+new file mode 100644
+index 000000000..d5ef60700
+--- /dev/null
++++ b/javatests/com/android/dialer/numberinfo/KeyedMutexTest.kt
+@@ -0,0 +1,65 @@
++/*
++ * SPDX-FileCopyrightText: 2026 The LineageOS Project
++ * SPDX-License-Identifier: Apache-2.0
++ */
++
++package com.android.dialer.numberinfo
++
++import java.util.concurrent.atomic.AtomicInteger
++import kotlinx.coroutines.CompletableDeferred
++import kotlinx.coroutines.Dispatchers
++import kotlinx.coroutines.async
++import kotlinx.coroutines.awaitAll
++import kotlinx.coroutines.delay
++import kotlinx.coroutines.runBlocking
++import kotlinx.coroutines.withTimeout
++import org.junit.Assert.assertEquals
++import org.junit.Test
++
++class KeyedMutexTest {
++
++    @Test
++    fun differentKeys_doNotWaitForEachOther() = runBlocking {
++        val locks = KeyedMutex<String>()
++        val release = CompletableDeferred<Unit>()
++        val holder = async(Dispatchers.Default) {
++            locks.withLock("13800138000") { release.await() }
++        }
++        // Must complete while the other number's lock is still held.
++        withTimeout(1_000) {
++            locks.withLock("17012345678") { }
++        }
++        release.complete(Unit)
++        holder.await()
++    }
++
++    @Test
++    fun sameKey_isSerialized() = runBlocking {
++        val locks = KeyedMutex<String>()
++        val inside = AtomicInteger(0)
++        val maxInside = AtomicInteger(0)
++        (1..8).map {
++            async(Dispatchers.Default) {
++                locks.withLock("13800138000") {
++                    maxInside.accumulateAndGet(inside.incrementAndGet(), ::maxOf)
++                    delay(10)
++                    inside.decrementAndGet()
++                }
++            }
++        }.awaitAll()
++        assertEquals(1, maxInside.get())
++    }
++
++    @Test
++    fun entriesAreReleasedAfterUse() = runBlocking {
++        val locks = KeyedMutex<String>()
++        (1..50).map { i ->
++            async(Dispatchers.Default) { locks.withLock("n$i") { delay(1) } }
++        }.awaitAll()
++        try {
++            locks.withLock("boom") { throw IllegalStateException() }
++        } catch (expected: IllegalStateException) {
++        }
++        assertEquals(0, locks.activeKeys())
++    }
++}
+-- 
+2.47.3
+
