@@ -8,12 +8,14 @@ package com.android.dialer.numberinfo.incall
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import com.android.dialer.i18n.LocaleUtils
 import com.android.dialer.numberinfo.ContactStatus
 import com.android.dialer.numberinfo.MarkType
 import com.android.dialer.numberinfo.NumberInfo
 import com.android.dialer.numberinfo.NumberInfoComponent
 import com.android.dialer.numberinfo.NumberInfoLog
 import com.android.dialer.numberinfo.R
+import com.android.dialer.numberinfo.location.NumberLocation
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -78,8 +80,22 @@ object NumberInfoBridge {
 
     /** Builds display strings using the app's resources. */
     @JvmStatic
-    fun format(context: Context, info: NumberInfo): CallerIdInfo =
-        CallerIdFormatter.format(info, ResourceStrings(context))
+    fun format(context: Context, info: NumberInfo): CallerIdInfo {
+        val formatted = CallerIdFormatter.format(info, ResourceStrings(context))
+        // The stored location is Chinese (LOCATION rules match it). The card shows the
+        // text in the current UI language; the stored text is the fallback for numbers
+        // that cannot be parsed. Runs on the IO coroutine (see query()).
+        val location = NumberLocation.describe(
+            context, info.number, LocaleUtils.getLocale(context), info.location)
+        return CallerIdInfo(
+            number = formatted.number,
+            bizName = formatted.bizName,
+            label = formatted.label,
+            location = location,
+            isSpam = formatted.isSpam,
+            isBusiness = formatted.isBusiness,
+        )
+    }
 
     @JvmStatic
     fun formatLabel(context: Context, info: NumberInfo): String? =

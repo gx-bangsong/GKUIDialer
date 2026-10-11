@@ -35,7 +35,9 @@ import com.android.contacts.common.ContactsUtils;
 import com.android.contacts.common.ContactsUtils.UserType;
 import com.android.contacts.common.util.TelephonyManagerUtils;
 import com.android.dialer.R;
+import com.android.dialer.i18n.LocaleUtils;
 import com.android.dialer.logging.ContactLookupResult;
+import com.android.dialer.numberinfo.location.NumberLocation;
 import com.android.dialer.phonenumbercache.ContactInfoHelper;
 import com.android.dialer.phonenumberutil.PhoneNumberHelper;
 
@@ -507,6 +509,17 @@ public class CallerInfo {
   public void updateGeoDescription(Context context, String fallbackNumber) {
     String number = TextUtils.isEmpty(phoneNumber) ? fallbackNumber : phoneNumber;
     geoDescription = PhoneNumberHelper.getGeoDescription(context, number, countryIso);
+    // Same offline data, but in the current UI language. Called on the
+    // CallerInfoAsyncQuery worker thread. Keeps the native text on any failure.
+    try {
+      String localized =
+          NumberLocation.describe(context, number, LocaleUtils.getLocale(context), geoDescription);
+      if (localized != null) {
+        geoDescription = localized;
+      }
+    } catch (RuntimeException e) {
+      // Keep the native result.
+    }
   }
 
   /** @return a string debug representation of this instance. */
