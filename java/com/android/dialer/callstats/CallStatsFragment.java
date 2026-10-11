@@ -101,7 +101,7 @@ public class CallStatsFragment extends Fragment implements
     super.onCreate(state);
 
     final ContentResolver cr = requireActivity().getContentResolver();
-    mCallStatsQueryHandler = new CallStatsQueryHandler(cr, this);
+    mCallStatsQueryHandler = new CallStatsQueryHandler(cr, this, requireContext());
     cr.registerContentObserver(CallLog.CONTENT_URI, true, mObserver);
     cr.registerContentObserver(ContactsContract.Contacts.CONTENT_URI, true, mObserver);
 

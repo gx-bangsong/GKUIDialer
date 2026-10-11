@@ -20,6 +20,7 @@ package com.android.dialer.callstats;
 
 import android.content.AsyncQueryHandler;
 import android.content.ContentResolver;
+import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabaseCorruptException;
 import android.database.sqlite.SQLiteDiskIOException;
@@ -31,8 +32,11 @@ import android.os.Message;
 import android.provider.CallLog.Calls;
 import android.telecom.PhoneAccountHandle;
 import android.telephony.PhoneNumberUtils;
+import android.text.TextUtils;
 import android.util.Log;
 
+import com.android.dialer.i18n.LocaleUtils;
+import com.android.dialer.numberinfo.location.NumberLocation;
 import com.android.dialer.phonenumbercache.ContactInfo;
 import com.android.dialer.phonenumberutil.PhoneNumberHelper;
 import com.android.dialer.telecom.TelecomUtil;
@@ -59,6 +63,7 @@ public class CallStatsQueryHandler extends AsyncQueryHandler {
   private static final String TAG = "CallStatsQueryHandler";
 
   private final WeakReference<Listener> mListener;
+  private final Context mContext;
   private Handler mWorkerThreadHandler;
 
   /**
@@ -97,9 +102,10 @@ public class CallStatsQueryHandler extends AsyncQueryHandler {
     return mWorkerThreadHandler;
   }
 
-  public CallStatsQueryHandler(ContentResolver contentResolver, Listener listener) {
+  public CallStatsQueryHandler(ContentResolver contentResolver, Listener listener, Context context) {
     super(contentResolver);
     mListener = new WeakReference<>(listener);
+    mContext = context.getApplicationContext();
   }
 
   public void fetchCalls(long from, long to, PhoneAccountHandle account) {
@@ -157,6 +163,16 @@ public class CallStatsQueryHandler extends AsyncQueryHandler {
     }
   }
 
+  /** Worker thread only. Returns the stored text when the number cannot be parsed. */
+  private String localizedGeocode(String number, String stored) {
+    try {
+      return NumberLocation.describe(
+          mContext, number, LocaleUtils.getLocale(mContext), stored);
+    } catch (RuntimeException e) {
+      return stored;
+    }
+  }
+
   private Map<ContactInfo, CallStatsDetails> processData(Cursor cursor) {
     final Map<ContactInfo, CallStatsDetails> result = new HashMap<>();
     final ArrayList<ContactInfo> infos = new ArrayList<>();
@@ -174,9 +190,14 @@ public class CallStatsQueryHandler extends AsyncQueryHandler {
         final long date = cursor.getLong(CallStatsQuery.DATE);
         final int numberPresentation = cursor.getInt(CallStatsQuery.NUMBER_PRESENTATION);
         final String countryIso = cursor.getString(CallStatsQuery.COUNTRY_ISO);
-        final String geocode = cursor.getString(CallStatsQuery.GEOCODED_LOCATION);
         final String postDialDigits = cursor.getString(CallStatsQuery.POST_DIAL_DIGITS);
         final ContactInfo info = getContactInfoFromCallStats(cursor);
+        final String storedGeocode = cursor.getString(CallStatsQuery.GEOCODED_LOCATION);
+        // Non-contact rows: recompute in the current language (runs on the worker thread).
+        final String geocode =
+            TextUtils.isEmpty(info.name)
+                ? localizedGeocode(number, storedGeocode)
+                : storedGeocode;
         final PhoneAccountHandle accountHandle = TelecomUtil.composePhoneAccountHandle(
             cursor.getString(CallStatsQuery.ACCOUNT_COMPONENT_NAME),
             cursor.getString(CallStatsQuery.ACCOUNT_ID));
