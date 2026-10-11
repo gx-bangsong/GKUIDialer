@@ -34,6 +34,9 @@ interface NumberInfoCacheDao {
 
     fun evict(number: String)
 
+    /** Deletes every cached online result. Manual marks are stored elsewhere and are kept. */
+    fun clearAll()
+
     /** Deletes rows older than [olderThanMillis]; returns deleted count. */
     fun purgeOlderThan(olderThanMillis: Long): Int
 }
@@ -114,6 +117,10 @@ class NumberInfoCacheDaoImpl(private val helper: SQLiteOpenHelper) : NumberInfoC
     override fun purgeOlderThan(olderThanMillis: Long): Int =
         helper.writableDatabase.delete(
             TABLE, "fetched_at < ?", arrayOf(olderThanMillis.toString()))
+
+    override fun clearAll() {
+        helper.writableDatabase.delete(TABLE, null, null)
+    }
 
     private fun fromCursor(c: Cursor, negative: Boolean): NumberInfo {
         fun text(col: String): String? = c.getString(c.getColumnIndexOrThrow(col))

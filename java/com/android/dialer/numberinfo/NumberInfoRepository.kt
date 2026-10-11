@@ -174,6 +174,23 @@ class NumberInfoRepository(
         return results.filter { !it.isEmpty }
     }
 
+    /** The user's own mark for [rawNumber], or null. Local only. */
+    suspend fun manualMark(rawNumber: String?): NumberInfo? = withContext(Dispatchers.IO) {
+        val number = NumberNormalizer.normalize(rawNumber) ?: return@withContext null
+        manualMarkDao.get(number)
+    }
+
+    /** Removes the user's mark; automatic data (yellow pages, online sources) applies again. */
+    suspend fun clearManualMark(rawNumber: String?) = withContext(Dispatchers.IO) {
+        val number = NumberNormalizer.normalize(rawNumber) ?: return@withContext
+        manualMarkDao.remove(number)
+    }
+
+    /** Deletes cached online results. Manual marks and local data are kept. Blocking. */
+    fun clearOnlineCache() {
+        cacheDao.clearAll()
+    }
+
     /**
      * Contact status for a raw number. Blocking (contacts provider); call from
      * a background thread. Anything other than [ContactStatus.NOT_CONTACT] must

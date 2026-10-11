@@ -18,7 +18,7 @@
 
   <string name="numberinfo_settings_title">号码识别与黄页</string>
   <string name="numberinfo_online_lookup_title">在线号码识别</string>
-  <string name="numberinfo_online_lookup_summary">向第三方服务查询陌生号码的标记与商家信息，来电号码将发送至已启用的数据源。联系人号码永不查询。</string>
+  <string name="numberinfo_online_lookup_summary">对不在通讯录中的来电号码，向下方开启的数据源查询标记和商家信息。只发送电话号码本身。联系人号码永不发送。去电不做在线查询。</string>
   <string name="numberinfo_sources_category">数据源</string>
   <string name="numberinfo_update_rules_title">更新解析规则</string>
   <string name="numberinfo_update_rules_success">规则已更新</string>
@@ -29,7 +29,17 @@
   <string name="numberinfo_source_sogou">搜狗电话邦</string>
   <string name="numberinfo_source_haoma">百度号码认证</string>
   <string name="numberinfo_online_confirm_title">开启在线号码识别？</string>
-  <string name="numberinfo_online_confirm_message">开启后，未知陌生号码会被发送至您选择的第三方服务以获取标记和商家信息。联系人号码不会被查询。您可随时关闭。</string>
+  <string name="numberinfo_online_confirm_message">不在通讯录中的来电号码，会发送给你开启的数据源：360 号码库、百度号码库、搜狗电话邦、百度号码认证。只发送电话号码，不发送姓名、通话记录或其他数据。联系人号码永不发送。去电不做在线查询。你可以随时关闭。</string>
   <string name="numberinfo_online_confirm_positive">开启</string>
   <string name="numberinfo_update_rules_not_configured">未配置更新源</string>
+  <string name="numberinfo_clear_cache_title">清除在线缓存</string>
+  <string name="numberinfo_clear_cache_summary">删除在线查询的缓存结果，你自己的标记不受影响。</string>
+  <string name="numberinfo_cache_cleared">在线缓存已清除</string>
+  <string name="manual_mark_entry">标记或纠错此号码</string>
+  <string name="manual_mark_title">标记号码</string>
+  <string name="manual_mark_current">当前标记：%1$s</string>
+  <string name="manual_mark_none">没有你自己的标记</string>
+  <string name="manual_mark_clear">取消标记</string>
+  <string name="manual_mark_saved">标记已保存</string>
+  <string name="manual_mark_cleared">标记已取消</string>
 </resources>

@@ -73,6 +73,9 @@ import com.android.dialer.i18n.LocaleUtils;
 import com.android.dialer.logging.ContactSource;
 import com.android.dialer.main.MainActivityPeer;
 import com.android.dialer.numberinfo.location.NumberLocation;
+import com.android.dialer.numberinfo.incall.NumberInfoLocal;
+import com.android.dialer.numberinfo.incall.CallerIdInfo;
+import com.android.dialer.numberinfo.incall.CallLogLabels;
 import com.android.dialer.phonenumbercache.CallLogQuery;
 import com.android.dialer.phonenumbercache.ContactInfo;
 import com.android.dialer.phonenumbercache.ContactInfoHelper;
@@ -943,11 +946,35 @@ public class CallLogAdapter extends GroupingListAdapter
       details.geocode = localizedGeocode(details.number, details.geocode);
     }
 
+    if (TextUtils.isEmpty(info.name)) {
+      applyLocalNumberInfo(details);
+    }
+
     views.info = info;
     views.numberType = getNumberType(activity.getResources(), details);
 
     callLogListItemHelper.updatePhoneCallDetails(details);
     return true;
+  }
+
+  /**
+   * Business name and spam label for a non-contact row, from local data only (manual mark, offline
+   * yellow pages, cache). Never touches the network. Must run on a worker thread.
+   */
+  @WorkerThread
+  private void applyLocalNumberInfo(PhoneCallDetails details) {
+    CallerIdInfo local = NumberInfoLocal.lookup(activity, String.valueOf(details.number));
+    if (local == null) {
+      return;
+    }
+    String name = CallLogLabels.nameFor(local);
+    if (name != null) {
+      details.namePrimary = name;
+    }
+    String spamLine = CallLogLabels.spamLineFor(local);
+    if (spamLine != null) {
+      details.geocode = spamLine;
+    }
   }
 
   /**

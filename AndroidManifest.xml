@@ -600,6 +600,12 @@
             android:theme="@style/ScreeningTheme" />
 
         <activity
+            android:name="com.android.dialer.numberinfo.ui.ManualMarkActivity"
+            android:exported="false"
+            android:label="@string/manual_mark_title"
+            android:theme="@style/ScreeningTheme" />
+
+        <activity
             android:name="com.android.dialer.callscreening.ui.BlockRuleEditorActivity"
             android:exported="false"
             android:label="@string/block_rule_add"

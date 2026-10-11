@@ -52,8 +52,8 @@ import com.android.dialer.common.concurrent.DialerExecutorComponent;
 import com.android.dialer.common.concurrent.SupportUiListener;
 import com.android.dialer.common.database.Selection;
 import com.android.dialer.glidephotomanager.PhotoInfo;
-import com.android.dialer.i18n.LocaleUtils;
-import com.android.dialer.numberinfo.location.NumberLocation;
+import com.android.dialer.numberinfo.incall.CallerIdInfo;
+import com.android.dialer.numberinfo.incall.NumberInfoLocal;
 import com.android.dialer.postcall.PostCall;
 import com.android.dialer.precall.PreCall;
 import com.android.dialer.rtt.RttTranscriptActivity;
@@ -324,15 +324,15 @@ abstract class CallDetailsActivityCommon extends BaseActivity {
     }
 
     @Override
-    public void createLocationTask(
-        String number, SuccessListener<String> onSuccess, FailureListener onFailure) {
+    public void createNumberInfoTask(
+        String number, SuccessListener<CallerIdInfo> onSuccess, FailureListener onFailure) {
       Context appContext = getActivity().getApplicationContext();
       DialerExecutorComponent.get(appContext)
           .dialerExecutorFactory()
           .createUiTaskBuilder(
               getActivity().getSupportFragmentManager(),
-              "CallDetailsActivityCommon.createLocationTask",
-              new LocationWorker(appContext))
+              "CallDetailsActivityCommon.createNumberInfoTask",
+              new NumberInfoWorker(appContext))
           .onSuccess(onSuccess)
           .onFailure(onFailure)
           .build()
@@ -357,19 +357,18 @@ abstract class CallDetailsActivityCommon extends BaseActivity {
     }
   }
 
-  /** Offline location of a number in the current language. Holds only the application context. */
-  static final class LocationWorker implements Worker<String, String> {
+  /** Local-only caller info of a number. Holds only the application context. */
+  static final class NumberInfoWorker implements Worker<String, CallerIdInfo> {
 
     private final Context appContext;
 
-    LocationWorker(Context appContext) {
+    NumberInfoWorker(Context appContext) {
       this.appContext = appContext;
     }
 
     @Override
-    public String doInBackground(@Nullable String number) {
-      return NumberLocation.describe(
-          appContext, number, LocaleUtils.getLocale(appContext), /* fallback= */ null);
+    public CallerIdInfo doInBackground(@Nullable String number) {
+      return NumberInfoLocal.lookup(appContext, number);
     }
   }
 

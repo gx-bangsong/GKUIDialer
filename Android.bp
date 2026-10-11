@@ -318,7 +318,9 @@ android_test {
         // Needs the app's aapt-generated R (numberinfo string resources) and
         // androidx.preference; covered by the on-device app build instead.
         "java/com/android/dialer/numberinfo/incall/NumberInfoBridge.kt",
+        "java/com/android/dialer/numberinfo/incall/NumberInfoLocal.kt",
         "java/com/android/dialer/numberinfo/settings/NumberInfoSettingsFragment.kt",
+        "java/com/android/dialer/numberinfo/ui/**/*.kt",
     ],
     asset_dirs: [
         "java/com/android/dialer/numberinfo/assets",

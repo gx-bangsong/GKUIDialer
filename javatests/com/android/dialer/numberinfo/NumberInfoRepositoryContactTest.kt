@@ -47,6 +47,7 @@ class NumberInfoRepositoryContactTest {
         override fun upsert(info: NumberInfo) {}
         override fun upsertNegative(number: String, source: String, timestampMillis: Long) {}
         override fun evict(number: String) {}
+        override fun clearAll() {}
         override fun purgeOlderThan(olderThanMillis: Long) = 0
     }
 

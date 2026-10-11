@@ -47,6 +47,9 @@ import com.android.dialer.compat.telephony.TelephonyManagerCompat;
 import com.android.dialer.contactphoto.ContactPhotoManager;
 import com.android.dialer.dialercontact.DialerContact;
 import com.android.dialer.glidephotomanager.GlidePhotoManagerComponent;
+import com.android.dialer.numberinfo.incall.CallLogLabels;
+import com.android.dialer.numberinfo.incall.CallerIdInfo;
+import com.android.dialer.numberinfo.ui.ManualMarkActivity;
 import com.android.dialer.phonenumberutil.PhoneNumberHelper;
 import com.android.dialer.util.DialerUtils;
 import com.android.dialer.widget.BidiTextView;
@@ -64,6 +67,7 @@ public class CallDetailsHeaderViewHolder extends RecyclerView.ViewHolder
   /** Number whose location lookup is currently wanted, or null. */
   private String pendingLocationNumber;
   private final ImageView callbackButton;
+  private final TextView manualMarkEntry;
   private final BidiTextView nameView;
   private final BidiTextView numberView;
   private final TextView networkView;
@@ -85,6 +89,7 @@ public class CallDetailsHeaderViewHolder extends RecyclerView.ViewHolder
     super(container);
     context = container.getContext();
     callbackButton = container.findViewById(R.id.call_back_button);
+    manualMarkEntry = container.findViewById(R.id.manual_mark_entry);
     nameView = container.findViewById(R.id.contact_name);
     numberView = container.findViewById(R.id.phone_number);
     networkView = container.findViewById(R.id.network);
@@ -198,11 +203,13 @@ public class CallDetailsHeaderViewHolder extends RecyclerView.ViewHolder
     }
 
     updateLocation(contact);
+    updateManualMarkEntry(contact);
     setCallbackAction(callbackAction);
   }
 
   /**
-   * Non-contact numbers show their offline location on the empty secondary line. The lookup runs
+   * Non-contact numbers show local data on the header: the business name replaces the number, and
+   * the spam label or the location fills the empty secondary line. The lookup is local only and runs
    * on a background worker; the result is applied only if the holder still shows that number.
    */
   private void updateLocation(DialerContact contact) {
@@ -215,24 +222,45 @@ public class CallDetailsHeaderViewHolder extends RecyclerView.ViewHolder
       return;
     }
     pendingLocationNumber = number;
-    callDetailsHeaderListener.createLocationTask(
+    callDetailsHeaderListener.createNumberInfoTask(
         number,
-        location -> onLocationLoaded(number, location),
-        // Not onFailure(): that one shows the assisted-dialing error. A failed location
-        // lookup just leaves the line empty.
+        info -> onNumberInfoLoaded(number, info),
+        // Not onFailure(): that one shows the assisted-dialing error. A failed lookup just
+        // leaves the header as it is.
         unused -> {});
   }
 
-  private void onLocationLoaded(String number, @Nullable String location) {
-    if (!number.equals(pendingLocationNumber) || TextUtils.isEmpty(location)) {
+  /** Mark or correct a non-contact number. Contacts and emergency numbers get no entry. */
+  private void updateManualMarkEntry(DialerContact contact) {
+    String number = contact.getNumber();
+    boolean show =
+        contact.getContactUri().isEmpty()
+            && !TextUtils.isEmpty(number)
+            && !PhoneNumberHelper.isEmergencyNumber(context, number);
+    manualMarkEntry.setVisibility(show ? View.VISIBLE : View.GONE);
+    manualMarkEntry.setOnClickListener(
+        show ? v -> context.startActivity(ManualMarkActivity.newIntent(context, number)) : null);
+  }
+
+  private void onNumberInfoLoaded(String number, @Nullable CallerIdInfo info) {
+    if (info == null || !number.equals(pendingLocationNumber)) {
       return;
     }
+    String businessName = CallLogLabels.nameFor(info);
+    if (businessName != null) {
+      nameView.setText(businessName);
+    }
+    String secondary = CallLogLabels.spamLineFor(info);
+    if (secondary == null) {
+      secondary = info.location;
+    }
     // Only fill the line when it is empty (the number is shown there otherwise).
-    if (numberView.getVisibility() == View.VISIBLE && !TextUtils.isEmpty(numberView.getText())) {
+    if (TextUtils.isEmpty(secondary)
+        || (numberView.getVisibility() == View.VISIBLE && !TextUtils.isEmpty(numberView.getText()))) {
       return;
     }
     numberView.setVisibility(View.VISIBLE);
-    numberView.setText(location);
+    numberView.setText(secondary);
   }
 
   void updateContactInfo(CallDetailsHeaderInfo headerInfo, @CallbackAction int callbackAction) {
@@ -320,8 +348,8 @@ public class CallDetailsHeaderViewHolder extends RecyclerView.ViewHolder
         SuccessListener<Integer> onSuccess,
         FailureListener onFailure);
 
-    /** Offline location of [number] in the current UI language; runs on a background worker. */
-    void createLocationTask(
-        String number, SuccessListener<String> onSuccess, FailureListener onFailure);
+    /** Local-only caller info of [number] (business name, spam label, location); background worker. */
+    void createNumberInfoTask(
+        String number, SuccessListener<CallerIdInfo> onSuccess, FailureListener onFailure);
   }
 }

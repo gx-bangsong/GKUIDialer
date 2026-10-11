@@ -20,7 +20,7 @@
   <!-- Settings -->
   <string name="numberinfo_settings_title">Caller ID &amp; yellow pages</string>
   <string name="numberinfo_online_lookup_title">Online number lookup</string>
-  <string name="numberinfo_online_lookup_summary">Look up unknown numbers on third-party services. The caller\'s number is sent to the enabled sources. Contacts are never looked up.</string>
+  <string name="numberinfo_online_lookup_summary">For each incoming call from a number that is not in your contacts, look up its mark and business info on the sources you turn on below. Only the phone number is sent. Contacts are never sent. Outgoing calls are not looked up online.</string>
   <string name="numberinfo_sources_category">Data sources</string>
   <string name="numberinfo_update_rules_title">Update parse rules</string>
   <string name="numberinfo_update_rules_success">Rules updated</string>
@@ -31,7 +31,17 @@
   <string name="numberinfo_source_sogou">Sogou Phone Bang</string>
   <string name="numberinfo_source_haoma">Baidu Verified Numbers</string>
   <string name="numberinfo_online_confirm_title">Turn on online number lookup?</string>
-  <string name="numberinfo_online_confirm_message">Unknown numbers will be sent to the third-party sources you enable to fetch marks and business info. Contacts are never looked up. You can turn this off at any time.</string>
+  <string name="numberinfo_online_confirm_message">When an incoming call comes from a number that is not in your contacts, its phone number is sent to the sources you turn on: 360 Number Database, Baidu Number Database, Sogou Phone Bang, Baidu Verified Numbers. No name, call history or other data is sent. Contacts are never sent. Outgoing calls are not looked up online. You can turn this off at any time.</string>
   <string name="numberinfo_online_confirm_positive">Turn on</string>
   <string name="numberinfo_update_rules_not_configured">No update source configured</string>
+  <string name="numberinfo_clear_cache_title">Clear online cache</string>
+  <string name="numberinfo_clear_cache_summary">Removes cached online results. Your own marks are kept.</string>
+  <string name="numberinfo_cache_cleared">Online cache cleared</string>
+  <string name="manual_mark_entry">Mark or correct this number</string>
+  <string name="manual_mark_title">Mark number</string>
+  <string name="manual_mark_current">Current mark: %1$s</string>
+  <string name="manual_mark_none">No mark of your own</string>
+  <string name="manual_mark_clear">Remove my mark</string>
+  <string name="manual_mark_saved">Mark saved</string>
+  <string name="manual_mark_cleared">Mark removed</string>
 </resources>

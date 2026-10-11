@@ -113,4 +113,18 @@
 
   </RelativeLayout>
 
+  <TextView
+      android:id="@+id/manual_mark_entry"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_below="@+id/assisted_dialing_container"
+      android:paddingStart="16dp"
+      android:paddingEnd="16dp"
+      android:paddingTop="12dp"
+      android:paddingBottom="12dp"
+      android:text="@string/manual_mark_entry"
+      android:textAppearance="?android:attr/textAppearanceMedium"
+      android:textColor="?android:attr/colorAccent"
+      android:visibility="gone" />
+
 </RelativeLayout>
