@@ -46,6 +46,7 @@ class BlockRuleListActivity : AppCompatActivity() {
         setTheme(R.style.ScreeningTheme)
         super.onCreate(savedInstanceState)
         setContentView(R.layout.block_rule_list_activity)
+        applySystemBarInsets()
         title = getString(R.string.block_rules_title)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 

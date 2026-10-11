@@ -58,6 +58,7 @@ class BlockRuleEditorActivity : AppCompatActivity() {
         setTheme(R.style.ScreeningTheme)
         super.onCreate(savedInstanceState)
         setContentView(R.layout.block_rule_editor)
+        applySystemBarInsets()
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
         editingRuleId = intent.getLongExtra(EXTRA_RULE_ID, 0L)

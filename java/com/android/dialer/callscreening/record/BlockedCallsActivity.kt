@@ -22,6 +22,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.android.dialer.callscreening.R
 import com.android.dialer.callscreening.ScreeningComponent
+import com.android.dialer.callscreening.ui.applySystemBarInsets
 import com.android.dialer.callscreening.rule.BlockRule
 import com.android.dialer.callscreening.rule.RuleType
 import kotlinx.coroutines.CoroutineScope
@@ -46,6 +47,7 @@ class BlockedCallsActivity : AppCompatActivity() {
         setTheme(R.style.ScreeningTheme)
         super.onCreate(savedInstanceState)
         setContentView(R.layout.blocked_calls_activity)
+        applySystemBarInsets()
         title = getString(R.string.blocked_calls_title)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
