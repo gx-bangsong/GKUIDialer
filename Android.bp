@@ -329,6 +329,9 @@ android_test {
         "androidx.test.runner",
         "junit",
         "kotlin-stdlib",
+        // The test APK compiles the location adapter (LibPhoneNumberGeoSource)
+        // from numberinfo/**, so it needs libphonenumber on its classpath.
+        "libphonenumber",
         "kotlinx_coroutines",
         "kotlinx_coroutines_android",
     ],

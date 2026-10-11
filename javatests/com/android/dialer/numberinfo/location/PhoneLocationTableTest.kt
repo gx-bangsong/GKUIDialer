@@ -78,12 +78,4 @@ class PhoneLocationTableTest {
     fun formatLocation_emptyPlace_returnsCarrierOnly() {
         assertEquals("移动", PhoneLocationTable.formatLocation("", "", "移动"))
     }
-
-    @Test
-    fun lookupAreaCode_threeDigitAndFourDigitCodes() {
-        assertEquals("北京 固话", PhoneLocationTable.lookupAreaCode("01012345678"))
-        assertEquals("深圳 固话", PhoneLocationTable.lookupAreaCode("07551234567"))
-        assertNull(PhoneLocationTable.lookupAreaCode("0999123456"))
-        assertNull(PhoneLocationTable.lookupAreaCode("13800138000"))
-    }
 }

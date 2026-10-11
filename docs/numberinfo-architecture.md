@@ -54,7 +54,10 @@ java/com/android/dialer/
 │   │   ├── NumberInfoCacheDao.kt
 │   │   └── ManualMarkDao.kt
 │   ├── location/
-│   │   └── NumberLocationLoader.kt      # 归属地：内置号段库（assets 压缩表，二分查找）
+│   │   ├── NumberLocation.kt            # 归属地入口（NumberLocationService + @JvmStatic NumberLocation.describe）
+│   │   ├── NumberLocationFormatter.kt   # 归属地拼接规则（纯函数）
+│   │   ├── PhoneNumberGeoSource.kt      # libphonenumber 适配层（LibPhoneNumberGeoSource）
+│   │   └── NumberLocationLoader.kt      # 可选的完整号段表（asset 缺失则返回空）
 │   ├── settings/
 │   │   ├── NumberInfoSettings.kt        # 总开关/各源独立开关/TTL（SharedPreferences）
 │   │   ├── NumberInfoSettingsFragment.kt# 设置页（含隐私说明）
@@ -90,7 +93,7 @@ java/com/android/dialer/
 
 功能资产随模块放置，由 Android.bp 的 `asset_dirs` 打包（目录内的子目录名即 APK assets 路径）：
 java/com/android/dialer/numberinfo/assets/numberinfo/rules.json          # 内置解析规则（可被热更新覆盖）
-java/com/android/dialer/numberinfo/assets/numberinfo/phone_location.csv  # 号段归属地表（prefix7,省,市,运营商）
+# 注：不再内置样例号段表；完整表（可选）放在 numberinfo/phone_location.csv，缺失时走 libphonenumber
 java/com/android/dialer/yellowpage/assets/yellowpage/yellowpage.db       # 预置离线黄页库（tools/gen_yellowpage_db.py 生成）
 ```
 
@@ -410,7 +413,7 @@ aaptflags 增加:  对应 --extra-packages
 
 1. Manifest：`CallScreeningService` 注册（我来写）；确认本应用是默认电话应用；如用户另选了来电筛选应用，本服务不会被绑定。
 2. 离线黄页库数据来源（CSV/db 均可），或先用我生成的示例小库跑通链路。
-3. 归属地号段库：当前随仓库的 `phone_location.csv` 仅为样例（几十行），上线前需替换为完整 7 位号段表，并确认数据许可证可入库。
+3. 归属地：默认走 libphonenumber（离线）。如需完整 7 位号段表，需确认数据来源与许可证后再放入 asset；本仓库不再附带样例表。
 4. `ruleUpdateUrl` 远程规则托管地址（可暂空，走内置规则）。
 5. 存储已定为 SQLiteOpenHelper（Soong 不支持 kapt，不引入 Room），无需再确认。
 6. 隐私弹窗文案的法务确认（我给默认文案）。
@@ -431,4 +434,27 @@ aaptflags 增加:  对应 --extra-packages
 - InCallUI 仅在 `ContactInfoCache` 中做装饰：联系人/紧急号码/语音信箱不查询、不装饰；CP2 结果覆盖 entry 时会重新应用已得到的号码识别结果，避免竞态丢失。
 - 展示：spam 标记在来电卡片显示具体标签（如“疑似诈骗 · 被 1,283 人标记”），无标签时回退通用文案；商家显示名仅在号码本身无 CP2 名称时替换。
 - 测试：纯逻辑测试（JVM）覆盖规则解析、聚合、拦截决策、标签格式化、归属地表解析、黄页 provider。
+
+---
+
+## 10. 归属地（第 4 批 P0-2）
+
+来源顺序（中文界面）：可选的完整号段表（asset，缺失则跳过）→ libphonenumber 的 geocoder + carrier。英文等其他语言只用 libphonenumber。
+
+拼接规则（`NumberLocationFormatter`）：
+- 大陆号码，城市级数据：`北京市 中国移动`、`广东省深圳市`（固话无运营商）；
+- 大陆号码，只有国家级数据：只显示运营商（`中国电信`），不显示 `中国`；
+- 大陆号码，什么都没有：无归属地；
+- 外国号码：地名（有运营商则附带）；
+- 同一段文字不重复（`北京 北京` → `北京`）。
+
+缓存：按 `(locale, 号码)` 做 LRU，locale 进 key，切换语言不会串。首次调用会加载 libphonenumber 元数据，只能在后台线程调用。
+
+规则用的归属地（`NumberInfo.location`）固定用中文生成，LOCATION 规则不依赖界面语言。
+
+通话记录（P1-8）按号码重新计算，不翻译数据库里存的英文；只有号码无法解析时才回退到存的值（`NumberLocation.describe(..., fallback)`）。
+
+运营商按号段推断，携号转网后可能不准。
+
+libphonenumber 适配层的编译检查：用 `git clone --depth 1 --branch v9.0.41` 稀疏拿到 `java/*/src/**/*.java`，和 Kotlin 源一起交给 kotlinc（只做类型检查，不生成 Java class）。真实数据的测试由评审用真 jar 跑。
 

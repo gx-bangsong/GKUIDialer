@@ -13,6 +13,10 @@ import com.android.dialer.numberinfo.ContactStatus
 import com.android.dialer.numberinfo.MarkType
 import com.android.dialer.numberinfo.NumberInfo
 import com.android.dialer.numberinfo.Sources
+import com.android.dialer.numberinfo.location.NumberLocationService
+import com.android.dialer.numberinfo.location.PhoneNumberGeoSource
+import com.android.dialer.numberinfo.location.RawGeo
+import java.util.Locale
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -132,6 +136,25 @@ class ScreeningPipelineTest {
             rules = listOf(rule(RuleType.PREFIX, "139"), markRule()), online = onlineFraud())
         val d = h.pipeline(engine).decide(n)
         assertEquals(Action.BLOCK, d.action)
+        assertEquals(0, h.onlineCalls)
+    }
+
+    @Test
+    fun locationRule_blocksWithOnlineOff_usingChineseLocationText() = runBlocking {
+        // 13910001234 is not in any bundled table; the text comes from the geo source.
+        val geo = object : PhoneNumberGeoSource {
+            override fun parseable(number: String) = true
+            override fun lookup(number: String, locale: Locale) =
+                RawGeo("CN", 86, "北京市", "中国移动", countryLevelOnly = false)
+        }
+        val location = NumberLocationService(geo).describe(n, Locale.SIMPLIFIED_CHINESE)
+        val local = NumberInfo(number = n, location = location, source = "local_geo")
+        val h = Harness(ContactStatus.NOT_CONTACT,
+            rules = listOf(rule(RuleType.LOCATION, "北京")),
+            onlineEnabled = false, local = local)
+        val d = h.pipeline(engine).decide(n)
+        assertEquals(Action.BLOCK, d.action)
+        assertEquals("LOCATION:北京", d.summary)
         assertEquals(0, h.onlineCalls)
     }
 }

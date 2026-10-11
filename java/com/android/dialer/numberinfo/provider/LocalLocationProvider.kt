@@ -6,13 +6,17 @@
 package com.android.dialer.numberinfo.provider
 
 import com.android.dialer.numberinfo.NumberInfo
-import com.android.dialer.numberinfo.location.NumberLocationLoader
 
 /**
  * Offline geo/carrier provider. Location-only NumberInfo; the aggregator
  * merges it under whatever mark/business identity other sources supply.
+ *
+ * [locationFor] must return text in Chinese: LOCATION rules match on the text
+ * in NumberInfo.location, so it must not depend on the UI language.
  */
-class LocalLocationProvider(private val loader: NumberLocationLoader) : NumberInfoProvider {
+class LocalLocationProvider(
+    private val locationFor: (number: String) -> String?,
+) : NumberInfoProvider {
 
     override val id: String get() = ID
     override val priority: Int get() = PRIORITY
@@ -20,7 +24,7 @@ class LocalLocationProvider(private val loader: NumberLocationLoader) : NumberIn
 
     override suspend fun query(number: String): NumberInfo? {
         val location = try {
-            loader.get(number)
+            locationFor(number)
         } catch (e: Exception) {
             null
         } ?: return null

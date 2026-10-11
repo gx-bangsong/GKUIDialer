@@ -12,7 +12,9 @@ import com.android.dialer.numberinfo.cache.ManualMarkDaoImpl
 import com.android.dialer.numberinfo.cache.NumberInfoCacheDao
 import com.android.dialer.numberinfo.cache.NumberInfoCacheDaoImpl
 import com.android.dialer.numberinfo.cache.NumberInfoDbHelper
+import com.android.dialer.numberinfo.location.LibPhoneNumberGeoSource
 import com.android.dialer.numberinfo.location.NumberLocationLoader
+import com.android.dialer.numberinfo.location.NumberLocationService
 import com.android.dialer.numberinfo.provider.LocalLocationProvider
 import com.android.dialer.numberinfo.provider.LocalYellowPageProvider
 import com.android.dialer.numberinfo.provider.ManualMarkProvider
@@ -60,11 +62,21 @@ class NumberInfoComponent private constructor(context: Context) {
         NumberLocationLoader(appContext)
     }
 
+    private val numberLocation: NumberLocationService by lazy {
+        NumberLocationService(
+            geoSource = LibPhoneNumberGeoSource(),
+            bundledTable = { locationLoader.get(it) },
+        )
+    }
+
     private val providerManager: ProviderManager by lazy {
         ProviderManager(settings).apply {
             register(ManualMarkProvider(manualMarkDao))
             register(LocalYellowPageProvider(yellowPageStore))
-            register(LocalLocationProvider(locationLoader))
+            // LOCATION rules match Chinese text, whatever the UI language is.
+            register(LocalLocationProvider { number ->
+                numberLocation.describe(number, java.util.Locale.SIMPLIFIED_CHINESE)
+            })
             // Rule-driven web sources. Adding a new one = a rules.json block
             // plus one line here.
             register(RuleBasedWebProvider(Sources.HAOMA, 500, ruleRepository::get))
@@ -88,6 +100,7 @@ class NumberInfoComponent private constructor(context: Context) {
     fun cacheDao(): NumberInfoCacheDao = cacheDao
     fun yellowPageStore(): OfflineYellowPageStore = yellowPageStore
     fun locationLoader(): NumberLocationLoader = locationLoader
+    fun numberLocation(): NumberLocationService = numberLocation
 
     companion object {
         @Volatile
