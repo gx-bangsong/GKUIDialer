@@ -15,6 +15,7 @@ import com.android.dialer.callscreening.ScreeningComponent
 import com.android.dialer.callscreening.rule.BlockRule
 import com.android.dialer.callscreening.rule.CommonPrefixes
 import com.android.dialer.callscreening.rule.RuleType
+import com.android.dialer.callscreening.rule.RuleValues
 import com.android.dialer.numberinfo.MarkType
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.chip.Chip
@@ -200,15 +201,23 @@ class BlockRuleEditorActivity : AppCompatActivity() {
 
     private fun save() {
         val type = selectedType()
-        val value = if (type == RuleType.MARK_TYPE) {
+        val raw = if (type == RuleType.MARK_TYPE) {
             selectedMarkTypesCsv()
         } else {
             valueInput.text?.toString()?.trim().orEmpty()
         }
-        if (value.isBlank()) {
+        if (raw.isBlank()) {
             Toast.makeText(this, R.string.block_rule_value_missing, Toast.LENGTH_SHORT).show()
             return
         }
+        // Store the canonical form so the rule matches incoming numbers, which
+        // are canonicalized the same way ("+86 138 0013 8000" -> "13800138000").
+        val value = RuleValues.normalize(type, raw)
+        if (value == null) {
+            valueLayout.error = getString(R.string.block_rule_value_invalid)
+            return
+        }
+        valueLayout.error = null
         val note = noteInput.text?.toString()?.trim()?.takeIf { it.isNotBlank() }
         scope.launch {
             withContext(Dispatchers.IO) {

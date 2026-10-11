@@ -23,8 +23,9 @@ import org.json.JSONObject
  * }
  *
  * Import is strict about the envelope (bad file -> exception, nothing applied)
- * but tolerant per-row: unknown rule types are skipped and counted, so exports
- * from a newer app version degrade gracefully.
+ * but tolerant per-row: unknown rule types and unusable values are skipped and
+ * counted, so exports from a newer app version degrade gracefully. Values are
+ * stored in canonical form ([RuleValues]).
  */
 object RulePorter {
 
@@ -65,8 +66,10 @@ object RulePorter {
         for (i in 0 until arr.length()) {
             val o = arr.getJSONObject(i)
             val type = RuleType.fromId(o.optString("type"))
-            val value = o.optString("value")
-            if (type == null || value.isBlank()) {
+            // Canonical form, same as rules saved from the editor; values that
+            // are not usable for their type (e.g. "abc" as a number) are skipped.
+            val value = type?.let { RuleValues.normalize(it, o.optString("value")) }
+            if (type == null || value == null) {
                 skipped++
                 continue
             }

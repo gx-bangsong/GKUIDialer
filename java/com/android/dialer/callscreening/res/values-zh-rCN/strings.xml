@@ -20,6 +20,7 @@
   <string name="block_rule_deleted">规则已删除</string>
   <string name="block_rule_save">保存</string>
   <string name="block_rule_value_missing">请输入规则内容</string>
+  <string name="block_rule_value_invalid">不是有效的号码或号段</string>
   <string name="block_rule_saved">规则已保存</string>
 
   <string name="rule_type_title">规则类型</string>

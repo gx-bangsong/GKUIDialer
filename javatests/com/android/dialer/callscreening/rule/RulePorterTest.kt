@@ -90,6 +90,37 @@ class RulePorterTest {
     }
 
     @Test
+    fun parse_normalizesValues() {
+        val json = """
+            { "formatVersion": 1, "rules": [
+              { "type": "BLACKLIST", "value": "+86 138 0013 8000" },
+              { "type": "PREFIX", "value": "+86 10" },
+              { "type": "WHITELIST", "value": "0086-139 0000*" },
+              { "type": "MARK_TYPE", "value": " fraud , telemarketing,fraud" }
+            ] }
+        """.trimIndent()
+        val result = RulePorter.parse(json)
+        assertEquals(0, result.skipped)
+        assertEquals(
+            listOf("13800138000", "010", "1390000*", "fraud,telemarketing"),
+            result.rules.map { it.value })
+    }
+
+    @Test
+    fun parse_skipsValuesThatAreNotNumbers() {
+        val json = """
+            { "formatVersion": 1, "rules": [
+              { "type": "BLACKLIST", "value": "abc" },
+              { "type": "PREFIX", "value": "+86" },
+              { "type": "PREFIX", "value": "170" }
+            ] }
+        """.trimIndent()
+        val result = RulePorter.parse(json)
+        assertEquals(2, result.skipped)
+        assertEquals(listOf("170"), result.rules.map { it.value })
+    }
+
+    @Test
     fun export_emptyListIsValid() {
         val result = RulePorter.parse(RulePorter.export(emptyList()))
         assertEquals(0, result.rules.size)

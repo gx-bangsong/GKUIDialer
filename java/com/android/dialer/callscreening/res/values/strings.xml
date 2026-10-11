@@ -21,6 +21,7 @@
   <string name="block_rule_deleted">Rule deleted</string>
   <string name="block_rule_save">Save</string>
   <string name="block_rule_value_missing">Enter a value for this rule</string>
+  <string name="block_rule_value_invalid">Not a valid phone number or prefix</string>
   <string name="block_rule_saved">Rule saved</string>
 
   <string name="rule_type_title">Rule type</string>

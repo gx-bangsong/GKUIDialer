@@ -22,6 +22,56 @@ class ScreeningDecisionEngineTest {
     private val engine = ScreeningDecisionEngine()
     private val n = "17012345678"
 
+    // -- rule values typed/pasted in non-canonical form --------------------------
+
+    @Test
+    fun blacklist_ruleValueWithCountryCodeAndSpaces_matches() {
+        val d = engine.decide(
+            "13800138000", null,
+            listOf(rule(RuleType.BLACKLIST, "+86 138 0013 8000")), ScreeningMode.BLACKLIST)
+        assertEquals(Action.BLOCK, d.action)
+    }
+
+    @Test
+    fun blacklist_wildcardWithSeparators_matches() {
+        val d = engine.decide(
+            "13800138000", null,
+            listOf(rule(RuleType.BLACKLIST, "+86 138-0013*")), ScreeningMode.BLACKLIST)
+        assertEquals(Action.BLOCK, d.action)
+    }
+
+    @Test
+    fun whitelist_ruleValueWithSeparators_matches() {
+        val d = engine.decide(
+            "13800138000", null,
+            listOf(rule(RuleType.WHITELIST, "138-0013-8000")), ScreeningMode.WHITELIST)
+        assertEquals(Action.ALLOW, d.action)
+    }
+
+    @Test
+    fun prefix_areaCodeMatchesE164Landline() {
+        // Telecom often delivers landlines in E.164 form.
+        val number = com.android.dialer.numberinfo.NumberNormalizer.normalize("+861012345678")!!
+        val d = engine.decide(
+            number, null, listOf(rule(RuleType.PREFIX, "010")), ScreeningMode.BLACKLIST)
+        assertEquals(Action.BLOCK, d.action)
+    }
+
+    @Test
+    fun prefix_ruleWithCountryCode_matches() {
+        val d = engine.decide(
+            n, null, listOf(rule(RuleType.PREFIX, "+86 170")), ScreeningMode.BLACKLIST)
+        assertEquals(Action.BLOCK, d.action)
+    }
+
+    @Test
+    fun prefix_bareCountryCodeRule_neverMatchesEverything() {
+        // "+86" alone must not degrade into an empty prefix that matches all numbers.
+        val d = engine.decide(
+            "13800138000", null, listOf(rule(RuleType.PREFIX, "+86")), ScreeningMode.BLACKLIST)
+        assertEquals(Action.ALLOW, d.action)
+    }
+
     private fun rule(
         type: RuleType, value: String, id: Long = 1L, enabled: Boolean = true,
     ) = BlockRule(id = id, type = type, value = value, enabled = enabled)

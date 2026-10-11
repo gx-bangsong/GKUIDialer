@@ -7,6 +7,7 @@ package com.android.dialer.callscreening
 
 import com.android.dialer.callscreening.rule.BlockRule
 import com.android.dialer.callscreening.rule.RuleType
+import com.android.dialer.callscreening.rule.RuleValues
 import com.android.dialer.callscreening.rule.ScreeningMode
 import com.android.dialer.numberinfo.MarkType
 import com.android.dialer.numberinfo.NumberInfo
@@ -65,7 +66,16 @@ class ScreeningDecisionEngine {
         if (isEmergencyNumber(number)) return Decision(Action.ALLOW, null, "SAFETY:emergency")
         if (isContact) return Decision(Action.ALLOW, null, "SAFETY:contact")
 
-        val active = rules.filter { it.enabled }
+        // Rule values are compared in canonical form; rows saved verbatim by
+        // older builds (e.g. "+86 138 0013 8000") are canonicalized here, and
+        // values that are unusable for their type are dropped.
+        val active = rules.asSequence()
+            .filter { it.enabled }
+            .mapNotNull { rule ->
+                RuleValues.normalize(rule.type, rule.value)
+                    ?.let { value -> if (value == rule.value) rule else rule.copy(value = value) }
+            }
+            .toList()
 
         // 1. Whitelist beats everything in both modes.
         active.firstOrNull { it.type == RuleType.WHITELIST && numberMatches(number, it.value) }
