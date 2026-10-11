@@ -69,8 +69,10 @@ import com.android.dialer.common.Assert;
 import com.android.dialer.common.FragmentUtils.FragmentUtilListener;
 import com.android.dialer.common.LogUtil;
 import com.android.dialer.contacts.ContactsComponent;
+import com.android.dialer.i18n.LocaleUtils;
 import com.android.dialer.logging.ContactSource;
 import com.android.dialer.main.MainActivityPeer;
+import com.android.dialer.numberinfo.location.NumberLocation;
 import com.android.dialer.phonenumbercache.CallLogQuery;
 import com.android.dialer.phonenumbercache.ContactInfo;
 import com.android.dialer.phonenumbercache.ContactInfoHelper;
@@ -935,6 +937,10 @@ public class CallLogAdapter extends GroupingListAdapter
         info.photoUri);
     if (!TextUtils.isEmpty(info.geoDescription)) {
       details.geocode = info.geoDescription;
+    } else if (TextUtils.isEmpty(info.name)) {
+      // Non-contact row: the stored GEOCODED_LOCATION was written in the language the
+      // provider had at insertion time, so compute it again in the current language.
+      details.geocode = localizedGeocode(details.number, details.geocode);
     }
 
     views.info = info;
@@ -942,6 +948,20 @@ public class CallLogAdapter extends GroupingListAdapter
 
     callLogListItemHelper.updatePhoneCallDetails(details);
     return true;
+  }
+
+  /**
+   * Location of a non-contact number in the current UI language, computed offline. Returns the
+   * stored text only when the number cannot be parsed. Must run on a worker thread.
+   */
+  @WorkerThread
+  private String localizedGeocode(CharSequence number, String stored) {
+    try {
+      return NumberLocation.describe(
+          activity, String.valueOf(number), LocaleUtils.getLocale(activity), stored);
+    } catch (RuntimeException e) {
+      return stored;
+    }
   }
 
   private static String getNumberType(Resources res, PhoneCallDetails details) {
