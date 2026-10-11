@@ -52,8 +52,13 @@ class YellowPageSeedTest(unittest.TestCase):
         for number in ("95338", "95188", "95017", "10086", "10010"):
             self.assertIsNotNone(self.lookup(number), number)
 
-    def test_network_failed_source_is_not_marked_verified(self):
-        self.assertEqual(0, self.lookup("10010")[3])
+    def test_seed_has_27_entries(self):
+        count = self.conn.execute("SELECT COUNT(*) FROM yellow_page").fetchone()[0]
+        self.assertEqual(27, count)
+
+    def test_mobile_and_12321_names(self):
+        self.assertEqual("中国移动客服", self.lookup("10086")[1])
+        self.assertEqual("12321举报受理中心", self.lookup("01012321")[1])
 
     def test_zhongtong_95311_is_zhongtong_express(self):
         row = self.lookup("95311")
@@ -67,11 +72,9 @@ class YellowPageSeedTest(unittest.TestCase):
         self.assertEqual("美团外卖客服", self.lookup("10109777")[1])
 
     def test_unverified_numbers_are_not_shipped(self):
-        # Removed or unsourced: 95013 (联通在信), 95106 (滴滴), 4001000000 (滴滴
-        # per 019f9e4e, not official), 10101111 (wrong 美团 number), and the
-        # not-yet-checked rows listed in the seed.
-        for number in ("95013", "95106", "4001000000", "10101111",
-                       "95533", "12306", "95583", "12315"):
+        # Removed: 95013 (联通在信, no official source), 95106 (滴滴, no official
+        # source), 10101111 (wrong 美团 number, replaced by 10107888).
+        for number in ("95013", "95106", "10101111"):
             self.assertIsNone(self.lookup(number), number)
 
     def test_every_shipped_row_has_a_source_in_the_seed(self):

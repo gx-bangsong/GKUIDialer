@@ -9,7 +9,7 @@
 # and are NOT in the database. verified=1 means the number was checked against
 # its source (it is shown as a verified business in the call UI).
 #
-# Verified against the source page (the number appears there):
+# Group 1: checked by the author against the source page.
 95311,中通快递,快递物流,1,https://www.zto.com/companyIntroduce/contactUs.html
 10107888,美团客服,生活服务,1,https://www.meituan.com/hotline
 10109777,美团外卖客服,生活服务,1,https://www.meituan.com/hotline
@@ -17,8 +17,25 @@
 95188,支付宝客服,金融支付,1,https://help.alipay.com/lab/help_detail.htm?help_id=212632
 95017,微信支付客服,金融支付,1,https://pay.weixin.qq.com/static/help_guide/register_guide.shtml
 10086,中国移动客服,运营商,1,https://www.10086.cn/support/service/channel/10086/
-# Source page could not be opened (HTTP 500 at review time); kept, not marked verified.
-10010,中国联通客服,运营商,0,http://www.chinaunicom.com/serve/serve.html
-# Not yet checked (no source_url in this revision; not shipped; 19 numbers):
-# 10000 95533 95588 95599 95566 95555 4008205555 12306 12345 11183 95554 95543
-# 95546 950616 95598 95583 4000000999 12315 01012321
+#
+# Group 2: Checked by the reviewer against the source page (2026-10-11).
+10010,中国联通客服,运营商,1,http://www.chinaunicom.com/serve/serve.html
+10000,中国电信客服,运营商,1,https://www.chinatelecom.com.cn/ct/about/03/
+95533,中国建设银行,银行,1,https://www.ccb.com/cn/home/customer_service/customer_service.html
+95588,中国工商银行,银行,1,https://www.icbc.com.cn/ICBCLtd/%E8%81%94%E7%B3%BB%E6%88%91%E4%BB%AC/
+95599,中国农业银行,银行,1,https://www.abchina.com/cn/
+95566,中国银行,银行,1,https://www.boc.cn/ebanking/security/tips/201302/t20130205_2152053.html
+95555,招商银行,银行,1,https://cmbchina.com/
+4008205555,招商银行信用卡中心,银行,1,https://cc.cmbchina.com/default.htm
+12306,铁路客户服务中心,交通出行,1,https://www.12306.cn/mormhweb/tlkytst/
+12345,政务服务便民热线,政务,1,https://app.www.gov.cn/govdata/gov/202101/06/466736/article.html
+11183,中国邮政速递物流,快递物流,1,https://www.chinapost.com.cn/xhtml1/report/2402/302-1.htm
+95554,圆通速递,快递物流,1,https://mec.yto.net.cn/html/newPrivacyPolicy2.html
+95543,申通快递,快递物流,1,https://page.sto.cn/jn-app/h5-pages/sxz_privacy_policy.html
+95546,韵达速递,快递物流,1,https://www.yundaex.com/cn/about_contact.php
+950616,京东物流,快递物流,1,https://www.jdl.com/news/2904/content01089
+95598,供电服务热线,生活服务,1,http://www.hb.sgcc.com.cn/html/files/2022-07/28/20220728103528937839934.pdf
+95583,中国国际航空,交通出行,1,https://webresource.airchina.com.cn/zh-CN/content/contact_us/customer/service_hotline/hotline/
+4000000999,滴滴出行乘客客服,交通出行,1,https://www6.didiglobal.com/contact/contact-us
+12315,市场监管投诉举报热线,政务,1,https://www.samr.gov.cn/xw/zj/art/2023/art_b5192eabd2f64569a0d1d1570232f632.html
+01012321,12321举报受理中心,政务,1,https://www.12321.cn/
