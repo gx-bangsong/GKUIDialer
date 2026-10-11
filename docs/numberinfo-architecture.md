@@ -371,7 +371,7 @@ decide(number, numberInfo, rules, mode):
 - 导入导出：`RulePorter` 用 SAF 读写 JSON（版本头 + 规则数组），号段/标记类型枚举同文件承载。
 
 ### 5.3 黄页
-- 离线优先：`OfflineYellowPageStore` 直接 `openDatabase(READONLY)` 首次从 assets 拷到 `no_backup/`；表结构 `yellow_page(number TEXT PK, name TEXT, category TEXT, verified INT)`，同步点查。
+- 离线优先：`OfflineYellowPageStore` 只读打开；每次打开时比较 assets 内置库与已安装库的 `meta.version`，内置库更新则替换（已下载的更新版本不会被旧内置库覆盖），内置库缺失时保留已安装库；表结构 `yellow_page(number TEXT PK, name TEXT, category TEXT, verified INT)`，同步点查。
 - 在线兜底：`BaiduHaomaProvider`（规则驱动，见 3.2 样例），仅本地未命中且开关开启时触发。
 - 离线库来源与更新：预置 db 由构建时脚本从 CSV 生成（来源需你提供/授权，exthmUI 方案同款思路）；`YellowPageUpdater` 支持从配置 URL 下载整包 + SHA-256 校验 + 原子替换。
 

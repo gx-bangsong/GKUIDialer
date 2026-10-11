@@ -9,6 +9,7 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import com.android.dialer.numberinfo.NumberInfoLog
 import java.io.File
+import java.io.IOException
 
 /**
  * Offline yellow-page database, exthmUI-style: a prebuilt SQLite db shipped in
@@ -77,9 +78,7 @@ class OfflineYellowPageStore(private val context: Context) : YellowPageStore {
             db?.let { return it }
             return try {
                 val file = databaseFile()
-                if (!file.exists()) {
-                    copyFromAssets(file)
-                }
+                installBundledIfNewer(file)
                 SQLiteDatabase.openDatabase(
                     file.path, null, SQLiteDatabase.OPEN_READONLY,
                 ).also { db = it }
@@ -91,16 +90,48 @@ class OfflineYellowPageStore(private val context: Context) : YellowPageStore {
         }
     }
 
-    private fun copyFromAssets(target: File) {
+    /**
+     * Installs the bundled database when it is newer (higher meta.version) than
+     * the installed copy, so corrected seed data reaches devices that already
+     * have an older copy. A newer downloaded database (YellowPageUpdater) is
+     * never replaced by an older bundled one. If the bundled file is unreadable
+     * the installed copy is kept.
+     */
+    private fun installBundledIfNewer(target: File) {
         target.parentFile?.mkdirs()
-        val tmp = File(target.parentFile, target.name + ".tmp")
-        context.assets.open(ASSET_PATH).use { input ->
-            tmp.outputStream().use { output -> input.copyTo(output) }
+        val tmp = File(target.parentFile, target.name + ".asset")
+        try {
+            try {
+                context.assets.open(ASSET_PATH).use { input ->
+                    tmp.outputStream().use { output -> input.copyTo(output) }
+                }
+            } catch (e: IOException) {
+                // Not bundled (e.g. a build without the database): keep what is installed.
+                if (target.exists()) return
+                throw e
+            }
+            val bundled = versionOf(tmp)
+            if (bundled < 0) return
+            val installed = if (target.exists()) versionOf(target) else -1L
+            if (installed >= bundled) return
+            if (!tmp.renameTo(target)) {
+                throw IllegalStateException("Failed to install yellow page db")
+            }
+            NumberInfoLog.i("yellow page db installed from assets, version $bundled")
+        } finally {
+            tmp.delete() // no-op after a successful rename
         }
-        if (!tmp.renameTo(target)) {
-            tmp.delete()
-            throw IllegalStateException("Failed to install yellow page db")
+    }
+
+    /** meta.version of a database file, or -1 when unreadable or absent. */
+    private fun versionOf(file: File): Long = try {
+        SQLiteDatabase.openDatabase(file.path, null, SQLiteDatabase.OPEN_READONLY).use { db ->
+            db.rawQuery("SELECT value FROM meta WHERE key = 'version'", null).use { c ->
+                if (c.moveToFirst()) c.getString(0).toLongOrNull() ?: -1L else -1L
+            }
         }
+    } catch (e: Exception) {
+        -1L
     }
 
     companion object {
