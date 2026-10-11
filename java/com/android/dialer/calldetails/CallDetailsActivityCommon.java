@@ -29,6 +29,7 @@ import android.view.View;
 import androidx.annotation.CallSuper;
 import androidx.annotation.MainThread;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.annotation.RequiresPermission;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
@@ -51,6 +52,8 @@ import com.android.dialer.common.concurrent.DialerExecutorComponent;
 import com.android.dialer.common.concurrent.SupportUiListener;
 import com.android.dialer.common.database.Selection;
 import com.android.dialer.glidephotomanager.PhotoInfo;
+import com.android.dialer.i18n.LocaleUtils;
+import com.android.dialer.numberinfo.location.NumberLocation;
 import com.android.dialer.postcall.PostCall;
 import com.android.dialer.precall.PreCall;
 import com.android.dialer.rtt.RttTranscriptActivity;
@@ -321,6 +324,22 @@ abstract class CallDetailsActivityCommon extends BaseActivity {
     }
 
     @Override
+    public void createLocationTask(
+        String number, SuccessListener<String> onSuccess, FailureListener onFailure) {
+      Context appContext = getActivity().getApplicationContext();
+      DialerExecutorComponent.get(appContext)
+          .dialerExecutorFactory()
+          .createUiTaskBuilder(
+              getActivity().getSupportFragmentManager(),
+              "CallDetailsActivityCommon.createLocationTask",
+              new LocationWorker(appContext))
+          .onSuccess(onSuccess)
+          .onFailure(onFailure)
+          .build()
+          .executeParallel(number);
+    }
+
+    @Override
     public void createAssistedDialerNumberParserTask(
         AssistedDialingNumberParseWorker worker,
         SuccessListener<Integer> successListener,
@@ -335,6 +354,22 @@ abstract class CallDetailsActivityCommon extends BaseActivity {
           .onFailure(failureListener)
           .build()
           .executeParallel(getActivity().getNumber());
+    }
+  }
+
+  /** Offline location of a number in the current language. Holds only the application context. */
+  static final class LocationWorker implements Worker<String, String> {
+
+    private final Context appContext;
+
+    LocationWorker(Context appContext) {
+      this.appContext = appContext;
+    }
+
+    @Override
+    public String doInBackground(@Nullable String number) {
+      return NumberLocation.describe(
+          appContext, number, LocaleUtils.getLocale(appContext), /* fallback= */ null);
     }
   }
 

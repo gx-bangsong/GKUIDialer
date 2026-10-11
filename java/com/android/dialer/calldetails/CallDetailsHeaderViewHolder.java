@@ -30,6 +30,7 @@ import android.widget.QuickContactBadge;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
+import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.android.dialer.R;
@@ -59,6 +60,9 @@ public class CallDetailsHeaderViewHolder extends RecyclerView.ViewHolder
     implements OnClickListener, OnLongClickListener, FailureListener {
 
   private final CallDetailsHeaderListener callDetailsHeaderListener;
+
+  /** Number whose location lookup is currently wanted, or null. */
+  private String pendingLocationNumber;
   private final ImageView callbackButton;
   private final BidiTextView nameView;
   private final BidiTextView numberView;
@@ -153,6 +157,8 @@ public class CallDetailsHeaderViewHolder extends RecyclerView.ViewHolder
 
   /** Populates the contact info fields based on the current contact information. */
   void updateContactInfo(DialerContact contact, @CallbackAction int callbackAction) {
+    // Any location lookup started for a previous contact is no longer wanted.
+    pendingLocationNumber = null;
     ContactPhotoManager.getInstance(context)
         .loadDialerThumbnailOrPhoto(
             contactPhoto,
@@ -191,7 +197,40 @@ public class CallDetailsHeaderViewHolder extends RecyclerView.ViewHolder
       }
     }
 
+    updateLocation(contact);
     setCallbackAction(callbackAction);
+  }
+
+  /**
+   * Non-contact numbers show their offline location on the empty secondary line. The lookup runs
+   * on a background worker; the result is applied only if the holder still shows that number.
+   */
+  private void updateLocation(DialerContact contact) {
+    if (!contact.getContactUri().isEmpty()
+        || PhoneNumberHelper.isEmergencyNumber(context, contact.getNumber())) {
+      return;
+    }
+    String number = contact.getNumber();
+    if (TextUtils.isEmpty(number)) {
+      return;
+    }
+    pendingLocationNumber = number;
+    callDetailsHeaderListener.createLocationTask(
+        number,
+        location -> onLocationLoaded(number, location),
+        this::onFailure);
+  }
+
+  private void onLocationLoaded(String number, @Nullable String location) {
+    if (!number.equals(pendingLocationNumber) || TextUtils.isEmpty(location)) {
+      return;
+    }
+    // Only fill the line when it is empty (the number is shown there otherwise).
+    if (numberView.getVisibility() == View.VISIBLE && !TextUtils.isEmpty(numberView.getText())) {
+      return;
+    }
+    numberView.setVisibility(View.VISIBLE);
+    numberView.setText(location);
   }
 
   void updateContactInfo(CallDetailsHeaderInfo headerInfo, @CallbackAction int callbackAction) {
@@ -278,5 +317,9 @@ public class CallDetailsHeaderViewHolder extends RecyclerView.ViewHolder
         AssistedDialingNumberParseWorker worker,
         SuccessListener<Integer> onSuccess,
         FailureListener onFailure);
+
+    /** Offline location of [number] in the current UI language; runs on a background worker. */
+    void createLocationTask(
+        String number, SuccessListener<String> onSuccess, FailureListener onFailure);
   }
 }
