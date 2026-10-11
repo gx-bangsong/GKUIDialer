@@ -50,7 +50,7 @@ class RuleBasedWebProviderTest {
         private val failure: IOException? = null,
     ) : HttpFetcher() {
         var lastUrl: String? = null
-        override fun fetch(
+        override suspend fun fetch(
             url: String, method: String, headers: Map<String, String>,
             charset: String, timeoutMs: Int, maxBytes: Int,
         ): String {
@@ -108,7 +108,7 @@ class RuleBasedWebProviderTest {
     @Test
     fun query_neverThrows() = runBlocking {
         val fetcher = object : HttpFetcher() {
-            override fun fetch(
+            override suspend fun fetch(
                 url: String, method: String, headers: Map<String, String>,
                 charset: String, timeoutMs: Int, maxBytes: Int,
             ): String = throw IOException("boom")

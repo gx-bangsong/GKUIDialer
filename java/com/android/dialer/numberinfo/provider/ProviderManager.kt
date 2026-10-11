@@ -8,20 +8,29 @@ package com.android.dialer.numberinfo.provider
 import com.android.dialer.numberinfo.NumberInfo
 import com.android.dialer.numberinfo.NumberInfoLog
 import com.android.dialer.numberinfo.NumberNormalizer
+import com.android.dialer.numberinfo.awaitWithin
 import com.android.dialer.numberinfo.settings.NumberInfoSettings
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.supervisorScope
-import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Registry + query orchestrator for all [NumberInfoProvider]s.
  *
  * Fault isolation: online sources are queried concurrently inside a
- * supervisorScope; each source gets its own try-catch AND its own
- * [withTimeoutOrNull] budget, so a hung or crashing source can neither
- * block nor cancel its siblings.
+ * supervisorScope; each source gets its own try-catch AND its own hard time
+ * budget ([awaitWithin]), so a hung or crashing source can neither block nor
+ * cancel its siblings. The budget holds even when a source is stuck in
+ * blocking I/O: its work runs detached in [workScope] and is abandoned (and
+ * cancelled, which aborts HttpFetcher requests) when the budget expires.
  */
-class ProviderManager(private val settings: NumberInfoSettings) {
+class ProviderManager(
+    private val settings: NumberInfoSettings,
+    /** Owns in-flight provider work; must be SupervisorJob-backed. */
+    private val workScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
+) {
 
     private val providers = ArrayList<NumberInfoProvider>()
 
@@ -43,8 +52,8 @@ class ProviderManager(private val settings: NumberInfoSettings) {
         providers.filter { !it.isOnline && it.isEnabled(settings) }
 
     /**
-     * Queries all enabled online providers concurrently. Runs on the caller's
-     * dispatcher — callers must be on Dispatchers.IO.
+     * Queries all enabled online providers concurrently and returns within
+     * roughly [perSourceTimeoutMs], whatever the providers do.
      *
      * @param perSourceTimeoutMs hard budget per source; the call-screening path
      *   passes a small value (~800ms), the in-call refresh path a larger one.
@@ -61,7 +70,7 @@ class ProviderManager(private val settings: NumberInfoSettings) {
             targets.map { provider ->
                 async {
                     try {
-                        withTimeoutOrNull(perSourceTimeoutMs) {
+                        awaitWithin(perSourceTimeoutMs, workScope) {
                             provider.query(number)
                         }
                     } catch (e: Exception) {

@@ -11,6 +11,7 @@ import com.android.dialer.callscreening.record.BlockedCallRecord
 import com.android.dialer.numberinfo.NumberInfoComponent
 import com.android.dialer.numberinfo.NumberInfoLog
 import com.android.dialer.numberinfo.NumberNormalizer
+import com.android.dialer.numberinfo.awaitWithin
 import com.android.dialer.numberinfo.provider.ProviderManager
 import com.android.dialer.callscreening.rule.ScreeningMode
 import kotlinx.coroutines.CoroutineScope
@@ -18,7 +19,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONObject
 
 /**
@@ -32,6 +32,8 @@ import org.json.JSONObject
  *   - online phase: only when a MARK_TYPE rule exists and nothing local
  *     decided; hard-capped at [ONLINE_BUDGET_MS] per source and
  *     [TOTAL_BUDGET_MS] overall — on timeout we fail open (allow).
+ *   - the total budget bounds the *wait* ([awaitWithin]), so blocking work
+ *     (DNS, sockets, SQLite, contacts) can never delay the response past it.
  *
  * Decisions themselves are delegated to the pure [ScreeningDecisionEngine].
  */
@@ -41,6 +43,16 @@ class DialerCallScreeningService : CallScreeningService() {
     private val engine = ScreeningDecisionEngine()
 
     override fun onScreenCall(callDetails: Call.Details) {
+        try {
+            screen(callDetails)
+        } catch (e: Exception) {
+            // Never leave Telecom waiting on an exception: fail open.
+            NumberInfoLog.w("screening setup failed, failing open", e)
+            respondAllow(callDetails)
+        }
+    }
+
+    private fun screen(callDetails: Call.Details) {
         // Only incoming calls are screened; anything else is allowed through.
         if (callDetails.callDirection != Call.Details.DIRECTION_INCOMING) {
             respondAllow(callDetails)
@@ -65,7 +77,7 @@ class DialerCallScreeningService : CallScreeningService() {
 
         scope.launch {
             val decision = try {
-                withTimeoutOrNull(TOTAL_BUDGET_MS) {
+                awaitWithin(TOTAL_BUDGET_MS, scope) {
                     decide(component, screening, number)
                 } ?: ScreeningDecisionEngine.Decision(
                     ScreeningDecisionEngine.Action.ALLOW, null, "TIMEOUT:fail-open")
@@ -76,7 +88,7 @@ class DialerCallScreeningService : CallScreeningService() {
             }
 
             if (decision.blocked) {
-                recordBlockedCall(screening, component, number, decision)
+                // Answer Telecom first; bookkeeping must not eat into its deadline.
                 respondToCall(
                     callDetails,
                     CallResponse.Builder()
@@ -87,6 +99,7 @@ class DialerCallScreeningService : CallScreeningService() {
                         .build())
                 NumberInfoLog.i("blocked "
                         + NumberNormalizer.maskForLog(number) + " (${decision.summary})")
+                recordBlockedCall(screening, component, number, decision)
             } else {
                 respondAllow(callDetails)
             }

@@ -55,7 +55,7 @@ class RuleRepository(
     @Throws(IOException::class)
     fun updateFromRemote(explicitUrl: String? = null): Boolean {
         val url = explicitUrl ?: get().ruleUpdateUrl ?: return false
-        val body = fetcher.fetch(url, timeoutMs = 10_000)
+        val body = fetcher.fetchBlocking(url, timeoutMs = 10_000)
         val parsed = try {
             RuleSet.parse(body) // full validation before anything is written
         } catch (e: Exception) {

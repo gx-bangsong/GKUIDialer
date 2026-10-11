@@ -104,6 +104,20 @@ class ProviderManagerTest {
         assertEquals(listOf("local"), out.map { it.source })
     }
 
+    @Test
+    fun queryOnline_blockingSourceIsTimedOutOnTime() = runBlocking {
+        // Real sources block inside HttpURLConnection (DNS, connect, read), which
+        // withTimeoutOrNull alone cannot interrupt. The budget must still hold.
+        val pm = ProviderManager(settings)
+        pm.register(fakeProvider("blocking") { Thread.sleep(3_000); result("blocking") })
+        pm.register(fakeProvider("fast") { result("fast") })
+        val started = System.nanoTime()
+        val out = pm.queryOnline("1", perSourceTimeoutMs = 300)
+        val elapsedMs = (System.nanoTime() - started) / 1_000_000
+        assertEquals(listOf("fast"), out.map { it.source })
+        assertTrue("queryOnline took ${elapsedMs}ms with a 300ms budget", elapsedMs < 1_500)
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun register_duplicateIdRejected() {
         val pm = ProviderManager(settings)
