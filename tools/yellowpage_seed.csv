@@ -9,26 +9,16 @@
 # and are NOT in the database. verified=1 means the number was checked against
 # its source (it is shown as a verified business in the call UI).
 #
-# Currently checked:
-#   95311  Zhongtong Express hotline; zto.com "全国统一客服热线：95311"
-#   10107888 / 10109777  Meituan consumer / takeout hotlines; meituan.com/hotline
-#
-# Rows below without a source_url are unverified leftovers; they are excluded
-# until a source is recorded for each of them.
+# Verified against the source page (the number appears there):
 95311,中通快递,快递物流,1,https://www.zto.com/companyIntroduce/contactUs.html
 10107888,美团客服,生活服务,1,https://www.meituan.com/hotline
 10109777,美团外卖客服,生活服务,1,https://www.meituan.com/hotline
-95338,顺丰速运客服,快递物流,0,
-95188,支付宝客服,金融支付,0,
-95017,微信支付客服,金融支付,0,
-10086,中国移动客服,运营商,0,
-10010,中国联通客服,运营商,0,
-10000,中国电信客服,运营商,0,
-95533,中国建设银行,银行,0,
-95588,中国工商银行,银行,0,
-95599,中国农业银行,银行,0,
-95566,中国银行,银行,0,
-4008205555,招商银行信用卡中心,银行,0,
-95555,招商银行,银行,0,
-12306,铁路客户服务中心,交通出行,0,
-12345,政务服务便民热线,政务,0,
+95338,顺丰速运客服,快递物流,1,https://www.sf-express.com/chn/sc/express/delivery/speedy
+95188,支付宝客服,金融支付,1,https://help.alipay.com/lab/help_detail.htm?help_id=212632
+95017,微信支付客服,金融支付,1,https://pay.weixin.qq.com/static/help_guide/register_guide.shtml
+10086,中国移动客服,运营商,1,https://www.10086.cn/support/service/channel/10086/
+# Source page could not be opened (HTTP 500 at review time); kept, not marked verified.
+10010,中国联通客服,运营商,0,http://www.chinaunicom.com/serve/serve.html
+# Not yet checked (no source_url in this revision; not shipped):
+# 95533 95588 95599 95566 95555 4008205555 12306 12345 11183 95554 95543 95546
+# 950616 95598 95583 4000000999 12315 01012321

@@ -48,6 +48,13 @@ class YellowPageSeedTest(unittest.TestCase):
             "SELECT number, name, category, verified FROM yellow_page WHERE number = ?",
             (number,)).fetchone()
 
+    def test_checked_sources_are_shipped(self):
+        for number in ("95338", "95188", "95017", "10086", "10010"):
+            self.assertIsNotNone(self.lookup(number), number)
+
+    def test_network_failed_source_is_not_marked_verified(self):
+        self.assertEqual(0, self.lookup("10010")[3])
+
     def test_zhongtong_95311_is_zhongtong_express(self):
         row = self.lookup("95311")
         self.assertIsNotNone(row)
@@ -60,8 +67,11 @@ class YellowPageSeedTest(unittest.TestCase):
         self.assertEqual("美团外卖客服", self.lookup("10109777")[1])
 
     def test_unverified_numbers_are_not_shipped(self):
-        # Removed or unsourced: 95013 (联通在信), 95106 (滴滴), 10101111 (wrong 美团 number).
-        for number in ("95013", "95106", "4001000000", "10101111"):
+        # Removed or unsourced: 95013 (联通在信), 95106 (滴滴), 4001000000 (滴滴
+        # per 019f9e4e, not official), 10101111 (wrong 美团 number), and the
+        # not-yet-checked rows listed in the seed.
+        for number in ("95013", "95106", "4001000000", "10101111",
+                       "95533", "12306", "95583", "12315"):
             self.assertIsNone(self.lookup(number), number)
 
     def test_every_shipped_row_has_a_source_in_the_seed(self):
@@ -70,7 +80,7 @@ class YellowPageSeedTest(unittest.TestCase):
         self.assertEqual(sourced, shipped)
         for r in seed_rows():
             if len(r) > 4 and r[4].strip():
-                self.assertTrue(r[4].startswith("https://"), r)
+                self.assertTrue(r[4].startswith(("https://", "http://")), r)
 
     def test_verified_rows_have_sources(self):
         for r in seed_rows():
@@ -78,8 +88,21 @@ class YellowPageSeedTest(unittest.TestCase):
             if verified:
                 self.assertTrue(len(r) > 4 and r[4].strip(), r)
 
-    def test_generator_reports_skipped_rows(self):
-        self.assertIn("no source_url", self.skipped_log)
+    def test_generator_skips_and_reports_rows_without_source(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            csv_path = os.path.join(tmp, "in.csv")
+            with open(csv_path, "w", encoding="utf-8") as f:
+                f.write("95311,中通快递,快递物流,1,https://www.zto.com/\n")
+                f.write("12345,政务服务便民热线,政务,1,\n")
+            out_db = os.path.join(tmp, "out.db")
+            log = build(csv_path, out_db)
+            conn = sqlite3.connect(out_db)
+            try:
+                numbers = {r[0] for r in conn.execute("SELECT number FROM yellow_page")}
+            finally:
+                conn.close()
+            self.assertEqual({"95311"}, numbers)
+            self.assertIn("no source_url", log)
 
 
 if __name__ == "__main__":
