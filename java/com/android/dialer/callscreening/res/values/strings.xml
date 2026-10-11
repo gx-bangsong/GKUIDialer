@@ -11,7 +11,7 @@
   <string name="screening_mode_blacklist">Block list mode</string>
   <string name="screening_mode_blacklist_summary">Block calls matching any rule</string>
   <string name="screening_mode_whitelist">Allow list mode</string>
-  <string name="screening_mode_whitelist_summary">Only allow contacts and allow-listed numbers</string>
+  <string name="screening_mode_whitelist_summary">Only contacts and allow-listed numbers ring. Calls that cannot be checked yet, such as before first unlock, are silenced.</string>
 
   <string name="block_rules_title">Blocking rules</string>
   <string name="block_rule_add">Add rule</string>

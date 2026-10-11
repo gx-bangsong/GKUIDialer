@@ -8,7 +8,6 @@ package com.android.dialer.yellowpage
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import com.android.dialer.numberinfo.NumberInfoLog
-import com.android.dialer.numberinfo.net.HttpFetcher
 import java.io.File
 import java.io.IOException
 import java.net.HttpURLConnection

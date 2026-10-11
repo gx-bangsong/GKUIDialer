@@ -14,7 +14,7 @@
 | 纯 Java，`Android.bp` 的 `srcs` 只含 `java/**/*.java`，无 Kotlin/coroutines 依赖 | 需在 `Android.bp` 增加 `java/**/*.kt`、`kotlinx-coroutines-android`、`kotlin-stdlib`；Soong 原生支持混编 |
 | 已有 LineageOS 的 `com.android.dialer.lookup`（ReverseLookup/ForwardLookup + LookupProvider ContentProvider），面向海外源（YellowPages/ZabaSearch/dastelefonbuch） | 新功能不塞进该框架（它是"单一 Provider 单例 + 无缓存 TTL + 无规则外置"的旧模型），而是新建 `numberinfo` 模块；但通过同一个 InCallUI 注入点共存，设置项并列 |
 | InCallUI 展示链路：`CallCardPresenter` → `ContactInfoCache`（含 `ContactCacheEntry`）→ `ContactGridManager`/`TopRow`/`BottomRow` | Caller ID 卡片在 `ContactCacheEntry` 上扩展 `NumberInfo` 字段，`ContactGridManager` 增加标记/黄页行 |
-| 无 `CallScreeningService` 实现；`blocking/` 只是系统 BlockedNumberContract 的包装 | 骚扰拦截为全新 `callscreening` 模块，作为默认拨号器包内服务被 Telecom 自动绑定 |
+| 无 `CallScreeningService` 实现；`blocking/` 只是系统 BlockedNumberContract 的包装 | 骚扰拦截为全新 `callscreening` 模块，Telecom 绑定默认电话应用的 `CallScreeningService`，无需额外申请角色 |
 | 网络层现有 volley + `LookupUtils`(HttpURLConnection) | 新模块统一用 `HttpURLConnection`（平台构建无 OkHttp prebuilt 负担），全部跑在 `Dispatchers.IO` |
 | Room：AOSP prebuilts 提供 `androidx.room_room-runtime`；`room-compiler` 注解处理插件在部分 ROM 树可能缺失 | 首选 Room；**兜底方案**（编译不过时）：同样的 schema 用 `SQLiteOpenHelper` + 手写 DAO，DAO 接口保持一致，上层零改动。二选一在编码阶段确定 |
 | 已有 Dagger2 root component 生成器（`@IncludeInDialerRoot`） | 新模块的单例（ProviderManager、RuleEngine、Repo）用现有 Dagger 体系注入，不引 Hilt |
@@ -363,7 +363,7 @@ decide(number, numberInfo, rules, mode):
 - 通话记录列表（calllog）复用同一 Repository，只读缓存不触发联网（滚动列表禁止打接口）。
 
 ### 5.2 骚扰拦截
-- `DialerCallScreeningService` 在 Manifest 注册 `android.telecom.CallScreeningService` intent-filter + `BIND_SCREENING_SERVICE` 权限保护；本应用即默认拨号器（ROLE_DIALER），Telecom 自动绑定，无需 RoleManager 额外申请。
+- `DialerCallScreeningService` 在 Manifest 注册 `android.telecom.CallScreeningService` intent-filter + `BIND_SCREENING_SERVICE` 权限保护；本应用是默认电话应用时，Telecom 自动绑定其 `CallScreeningService`，无需 RoleManager 额外申请。注意：用户若在系统设置里另选了来电筛选应用（如 Truecaller），Telecom 会绑定那个应用，本服务不会收到来电，这是预期行为，设置页文案也按此说明。
 - 拦截动作可配置：`disallowCall(true) + rejectCall(true) + skipCallLog(false) + skipNotification(true)`，默认**保留系统通话记录但跳过未接通知**，另写自有拦截记录表（可查看/恢复/加白）。
 - 规则编辑页（MD3）：
   - 号段输入：`TextInputLayout` + 常用号段 `ChipGroup`（AssistChip：`170` `171` `162` `165` `167` `1690-1699` `950xx` `951xx` `952` `400` `+区号`），点击填入；号段常量集中在 `CommonPrefixes.kt`，与规则导入导出共用。
@@ -408,7 +408,7 @@ aaptflags 增加:  对应 --extra-packages
 
 ## 8. 需要你手动准备/确认的外部项（完整清单随代码给出）
 
-1. Manifest：`CallScreeningService` 注册（我来写）；ROM 侧确认 Dialer 保持 ROLE_DIALER 默认授予。
+1. Manifest：`CallScreeningService` 注册（我来写）；确认本应用是默认电话应用；如用户另选了来电筛选应用，本服务不会被绑定。
 2. 离线黄页库数据来源（CSV/db 均可），或先用我生成的示例小库跑通链路。
 3. 归属地号段库：当前随仓库的 `phone_location.csv` 仅为样例（几十行），上线前需替换为完整 7 位号段表，并确认数据许可证可入库。
 4. `ruleUpdateUrl` 远程规则托管地址（可暂空，走内置规则）。

@@ -10,7 +10,7 @@
   <string name="screening_mode_blacklist">黑名单模式</string>
   <string name="screening_mode_blacklist_summary">命中任一规则即拦截</string>
   <string name="screening_mode_whitelist">白名单模式</string>
-  <string name="screening_mode_whitelist_summary">仅放行联系人与白名单号码</string>
+  <string name="screening_mode_whitelist_summary">只有联系人和白名单号码会响铃。暂时无法判断的来电（例如开机后未解锁时）会静音，不会被拒接。</string>
 
   <string name="block_rules_title">拦截规则</string>
   <string name="block_rule_add">添加规则</string>
