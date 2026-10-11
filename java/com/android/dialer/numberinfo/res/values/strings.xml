@@ -33,4 +33,5 @@
   <string name="numberinfo_online_confirm_title">Turn on online number lookup?</string>
   <string name="numberinfo_online_confirm_message">Unknown numbers will be sent to the third-party sources you enable to fetch marks and business info. Contacts are never looked up. You can turn this off at any time.</string>
   <string name="numberinfo_online_confirm_positive">Turn on</string>
+  <string name="numberinfo_update_rules_not_configured">No update source configured</string>
 </resources>

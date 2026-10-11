@@ -48,32 +48,28 @@ class RuleRepository(
 
     /**
      * Fetches rules from [RuleSet.ruleUpdateUrl] (or [explicitUrl]) and installs
-     * them atomically. Blocking — call from Dispatchers.IO only.
-     *
-     * @return true if new rules were installed.
+     * them atomically. Blocking; call from Dispatchers.IO or another background
+     * thread only. See [RuleUpdater] for the result semantics.
      */
-    @Throws(IOException::class)
-    fun updateFromRemote(explicitUrl: String? = null): Boolean {
-        val url = explicitUrl ?: get().ruleUpdateUrl ?: return false
-        val body = fetcher.fetchBlocking(url, timeoutMs = 10_000)
-        val parsed = try {
-            RuleSet.parse(body) // full validation before anything is written
-        } catch (e: Exception) {
-            NumberInfoLog.w("Remote rules rejected (invalid): $e")
-            return false
-        }
+    fun updateFromRemote(explicitUrl: String? = null): RuleUpdateResult =
+        RuleUpdater(
+            current = { get() },
+            fetch = { url -> fetcher.fetchBlocking(url, timeoutMs = 10_000) },
+            install = { body, parsed -> installOverride(body, parsed) },
+        ).update(explicitUrl ?: get().ruleUpdateUrl)
+
+    private fun installOverride(body: String, parsed: RuleSet) {
         synchronized(lock) {
-            val tmp = File(overrideFile().parentFile, OVERRIDE_NAME + ".tmp")
+            val target = overrideFile()
+            val tmp = File(target.parentFile, OVERRIDE_NAME + ".tmp")
             tmp.parentFile?.mkdirs()
             tmp.writeText(body)
-            if (!tmp.renameTo(overrideFile())) {
+            if (!tmp.renameTo(target)) {
                 tmp.delete()
                 throw IOException("Failed to install rules override")
             }
             cached = parsed
         }
-        NumberInfoLog.i("Rules updated from remote, updatedAt=${parsed.updatedAt}")
-        return true
     }
 
     /** Removes the hot-updated override, reverting to built-in asset rules. */

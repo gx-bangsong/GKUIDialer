@@ -31,4 +31,5 @@
   <string name="numberinfo_online_confirm_title">开启在线号码识别？</string>
   <string name="numberinfo_online_confirm_message">开启后，未知陌生号码会被发送至您选择的第三方服务以获取标记和商家信息。联系人号码不会被查询。您可随时关闭。</string>
   <string name="numberinfo_online_confirm_positive">开启</string>
+  <string name="numberinfo_update_rules_not_configured">未配置更新源</string>
 </resources>

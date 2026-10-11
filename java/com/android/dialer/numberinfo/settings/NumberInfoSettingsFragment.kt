@@ -18,6 +18,7 @@ import com.android.dialer.numberinfo.NumberInfoComponent
 import com.android.dialer.numberinfo.NumberInfoLog
 import com.android.dialer.numberinfo.R
 import com.android.dialer.numberinfo.Sources
+import com.android.dialer.numberinfo.rules.RuleUpdateResult
 import java.util.concurrent.Executors
 
 /**
@@ -92,15 +93,30 @@ class NumberInfoSettingsFragment : PreferenceFragmentCompat() {
             false // do not flip until the user confirms
         }
 
-        screen.addPreference(Preference(context).apply {
+        val updatePref = Preference(context).apply {
             key = KEY_UPDATE_RULES
             title = getString(R.string.numberinfo_update_rules_title)
             isIconSpaceReserved = false
+            // Read the rule file off the main thread; the item stays disabled until
+            // we know an update source is configured.
+            isEnabled = false
             setOnPreferenceClickListener {
                 updateRules(component)
                 true
             }
-        })
+        }
+        screen.addPreference(updatePref)
+        worker.execute {
+            val configured = !component.ruleRepository().get().ruleUpdateUrl.isNullOrBlank()
+            mainHandler.post {
+                if (isAdded) {
+                    updatePref.isEnabled = configured
+                    if (!configured) {
+                        updatePref.summary = getString(R.string.numberinfo_update_rules_not_configured)
+                    }
+                }
+            }
+        }
 
         preferenceScreen = screen
     }
@@ -114,10 +130,12 @@ class NumberInfoSettingsFragment : PreferenceFragmentCompat() {
     private fun updateRules(component: NumberInfoComponent) {
         worker.execute {
             val message = try {
-                if (component.ruleRepository().updateFromRemote()) {
-                    R.string.numberinfo_update_rules_success
-                } else {
-                    R.string.numberinfo_update_rules_unchanged
+                when (component.ruleRepository().updateFromRemote()) {
+                    RuleUpdateResult.Updated -> R.string.numberinfo_update_rules_success
+                    RuleUpdateResult.UpToDate -> R.string.numberinfo_update_rules_unchanged
+                    RuleUpdateResult.NotConfigured ->
+                        R.string.numberinfo_update_rules_not_configured
+                    is RuleUpdateResult.Failed -> R.string.numberinfo_update_rules_failure
                 }
             } catch (e: Exception) {
                 NumberInfoLog.w("rule update failed", e)
