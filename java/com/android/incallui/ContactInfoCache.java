@@ -430,7 +430,7 @@ public class ContactInfoCache implements OnImageLoadCompleteListener {
               callId, call.getNumberPresentation(), callerInfo, false, queryToken);
       sendInfoNotifications(callId, initialCacheEntry);
     }
-    maybeQueryNumberInfo(call, callId);
+    maybeQueryNumberInfo(call, callId, isIncoming);
     Trace.endSection();
   }
 
@@ -441,7 +441,8 @@ public class ContactInfoCache implements OnImageLoadCompleteListener {
    * refreshes exactly like any other async contact data. Never blocks; all
    * failures are swallowed inside the bridge.
    */
-  private void maybeQueryNumberInfo(final DialerCall call, final String callId) {
+  private void maybeQueryNumberInfo(
+      final DialerCall call, final String callId, final boolean isIncoming) {
     final String number = call.getNumber();
     if (TextUtils.isEmpty(number)) {
       return;
@@ -450,6 +451,7 @@ public class ContactInfoCache implements OnImageLoadCompleteListener {
         context,
         callId,
         number,
+        isIncoming,
         (resultCallId, info) -> {
           // Main thread (bridge contract).
           if (info == null) {

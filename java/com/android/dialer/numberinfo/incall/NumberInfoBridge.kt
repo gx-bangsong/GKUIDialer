@@ -45,24 +45,36 @@ object NumberInfoBridge {
      * safe to invoke from the main thread.
      */
     @JvmStatic
-    fun query(context: Context, callId: String, rawNumber: String?, listener: Listener) {
+    fun query(
+        context: Context,
+        callId: String,
+        rawNumber: String?,
+        isIncoming: Boolean,
+        listener: Listener,
+    ) {
         val appContext = context.applicationContext
         scope.launch {
             try {
                 val repository = NumberInfoComponent.get(appContext).repository()
                 // Anything but a confirmed non-contact is left alone: contacts, and
                 // numbers whose status is unknown (locked device, no permission).
-                if (repository.contactStatus(rawNumber) != ContactStatus.NOT_CONTACT) {
+                val status = repository.contactStatus(rawNumber)
+                if (status != ContactStatus.NOT_CONTACT) {
                     return@launch
                 }
                 // Phase 1: local (manual mark / offline yellow pages / geo / cache).
                 repository.peekLocal(rawNumber)?.let {
                     postResult(appContext, callId, it, listener)
                 }
-                // Phase 2: online refresh; listener fires again when data lands.
-                repository.refreshOnlineAsync(rawNumber) { _, refreshed ->
-                    if (refreshed != null) {
-                        postResult(appContext, callId, refreshed, listener)
+                // Phase 2: online refresh, incoming calls only; the listener fires again when
+                // the data lands. Outgoing calls never leave the device.
+                if (OnlineLookupPolicy.mayQueryOnline(
+                        isIncoming, status, NumberInfoComponent.get(appContext).settings()
+                            .onlineLookupEnabled)) {
+                    repository.refreshOnlineAsync(rawNumber) { _, refreshed ->
+                        if (refreshed != null) {
+                            postResult(appContext, callId, refreshed, listener)
+                        }
                     }
                 }
             } catch (e: Exception) {

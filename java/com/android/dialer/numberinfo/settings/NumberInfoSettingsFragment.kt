@@ -118,6 +118,26 @@ class NumberInfoSettingsFragment : PreferenceFragmentCompat() {
             }
         }
 
+        screen.addPreference(Preference(context).apply {
+            key = KEY_CLEAR_CACHE
+            title = getString(R.string.numberinfo_clear_cache_title)
+            summary = getString(R.string.numberinfo_clear_cache_summary)
+            isIconSpaceReserved = false
+            setOnPreferenceClickListener {
+                worker.execute {
+                    // Deletes online results only; the user's own marks are a separate table.
+                    component.repository().clearOnlineCache()
+                    mainHandler.post {
+                        if (isAdded) {
+                            Toast.makeText(context, R.string.numberinfo_cache_cleared,
+                                Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+                true
+            }
+        })
+
         preferenceScreen = screen
     }
 
@@ -154,6 +174,7 @@ class NumberInfoSettingsFragment : PreferenceFragmentCompat() {
         private const val KEY_ONLINE_ENABLED = "numberinfo_online_enabled"
         private const val KEY_SOURCE_PREFIX = "numberinfo_source_"
         private const val KEY_UPDATE_RULES = "numberinfo_update_rules"
+        private const val KEY_CLEAR_CACHE = "numberinfo_clear_cache"
 
         /** Online sources exposed as switches; ids must match rules.json. */
         private val ONLINE_SOURCES = listOf(
