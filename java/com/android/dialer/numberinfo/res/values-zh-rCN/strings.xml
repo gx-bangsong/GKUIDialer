@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: 2026 The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
+-->
+<resources>
+  <string name="numberinfo_mark_count">被 %1$s 人标记</string>
+  <string name="numberinfo_verified_business">已认证商家</string>
+
+  <string name="numberinfo_mark_fraud">疑似诈骗</string>
+  <string name="numberinfo_mark_harassment">骚扰电话</string>
+  <string name="numberinfo_mark_telemarketing">广告推销</string>
+  <string name="numberinfo_mark_agent">中介来电</string>
+  <string name="numberinfo_mark_debt">催收来电</string>
+  <string name="numberinfo_mark_express">快递外卖</string>
+  <string name="numberinfo_mark_taxi">网约车</string>
+  <string name="numberinfo_mark_custom">用户标记号码</string>
+
+  <string name="numberinfo_settings_title">号码识别与黄页</string>
+  <string name="numberinfo_online_lookup_title">在线号码识别</string>
+  <string name="numberinfo_online_lookup_summary">向第三方服务查询陌生号码的标记与商家信息，来电号码将发送至已启用的数据源。联系人号码永不查询。</string>
+  <string name="numberinfo_sources_category">数据源</string>
+  <string name="numberinfo_update_rules_title">更新解析规则</string>
+  <string name="numberinfo_update_rules_success">规则已更新</string>
+  <string name="numberinfo_update_rules_unchanged">规则已是最新</string>
+  <string name="numberinfo_update_rules_failure">规则更新失败</string>
+  <string name="numberinfo_source_so360">360 号码库</string>
+  <string name="numberinfo_source_baidu">百度号码库</string>
+  <string name="numberinfo_source_sogou">搜狗电话邦</string>
+  <string name="numberinfo_source_haoma">百度号码认证</string>
+  <string name="numberinfo_online_confirm_title">开启在线号码识别？</string>
+  <string name="numberinfo_online_confirm_message">开启后，未知陌生号码会被发送至您选择的第三方服务以获取标记和商家信息。联系人号码不会被查询。您可随时关闭。</string>
+  <string name="numberinfo_online_confirm_positive">开启</string>
+</resources>

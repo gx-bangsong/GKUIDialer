@@ -12,12 +12,16 @@ import com.android.dialer.numberinfo.cache.ManualMarkDaoImpl
 import com.android.dialer.numberinfo.cache.NumberInfoCacheDao
 import com.android.dialer.numberinfo.cache.NumberInfoCacheDaoImpl
 import com.android.dialer.numberinfo.cache.NumberInfoDbHelper
+import com.android.dialer.numberinfo.location.NumberLocationLoader
+import com.android.dialer.numberinfo.provider.LocalLocationProvider
+import com.android.dialer.numberinfo.provider.LocalYellowPageProvider
 import com.android.dialer.numberinfo.provider.ManualMarkProvider
 import com.android.dialer.numberinfo.provider.ProviderManager
 import com.android.dialer.numberinfo.provider.RuleBasedWebProvider
 import com.android.dialer.numberinfo.rules.RuleRepository
 import com.android.dialer.numberinfo.settings.NumberInfoSettings
 import com.android.dialer.numberinfo.settings.NumberInfoSettingsImpl
+import com.android.dialer.yellowpage.OfflineYellowPageStore
 
 /**
  * Composition root for the numberinfo stack — one lazily-built object graph
@@ -30,7 +34,7 @@ import com.android.dialer.numberinfo.settings.NumberInfoSettingsImpl
  * is the single place that would change if that ever becomes possible.
  *
  * Provider registry (priorities per docs §3.1):
- *   manual(1000) > [local_yp(900) — batch ③] > haoma(500) > sogou(250)
+ *   manual(1000) > local_yp(900) > local_geo(800) > haoma(500) > sogou(250)
  *   > so360(200) > baidu(150)
  */
 class NumberInfoComponent private constructor(context: Context) {
@@ -48,16 +52,25 @@ class NumberInfoComponent private constructor(context: Context) {
 
     private val ruleRepository: RuleRepository by lazy { RuleRepository(appContext) }
 
+    private val yellowPageStore: OfflineYellowPageStore by lazy {
+        OfflineYellowPageStore(appContext)
+    }
+
+    private val locationLoader: NumberLocationLoader by lazy {
+        NumberLocationLoader(appContext)
+    }
+
     private val providerManager: ProviderManager by lazy {
         ProviderManager(settings).apply {
             register(ManualMarkProvider(manualMarkDao))
+            register(LocalYellowPageProvider(yellowPageStore))
+            register(LocalLocationProvider(locationLoader))
             // Rule-driven web sources. Adding a new one = a rules.json block
             // plus one line here.
             register(RuleBasedWebProvider(Sources.HAOMA, 500, ruleRepository::get))
             register(RuleBasedWebProvider(Sources.SOGOU, 250, ruleRepository::get))
             register(RuleBasedWebProvider(Sources.SO360, 200, ruleRepository::get))
             register(RuleBasedWebProvider(Sources.BAIDU, 150, ruleRepository::get))
-            // batch ③: register(LocalYellowPageProvider(...)) at priority 900.
         }
     }
 
@@ -73,6 +86,8 @@ class NumberInfoComponent private constructor(context: Context) {
     fun repository(): NumberInfoRepository = repository
     fun manualMarkDao(): ManualMarkDao = manualMarkDao
     fun cacheDao(): NumberInfoCacheDao = cacheDao
+    fun yellowPageStore(): OfflineYellowPageStore = yellowPageStore
+    fun locationLoader(): NumberLocationLoader = locationLoader
 
     companion object {
         @Volatile

@@ -145,7 +145,7 @@ class RuleModelTest {
 
     @Test
     fun parse_builtinAssetIsValid() {
-        // Guards the shipped asset: a malformed assets/numberinfo/rules.json
+        // Guards the shipped asset: a malformed numberinfo/rules.json (asset)
         // must fail this test, not in the field. The asset is packaged into
         // the test APK via asset_dirs in Android.bp.
         val stream = try {

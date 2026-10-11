@@ -52,6 +52,8 @@ import com.android.dialer.logging.ContactLookupResult;
 import com.android.dialer.logging.ContactSource;
 import com.android.dialer.oem.CequintCallerIdManager;
 import com.android.dialer.oem.CequintCallerIdManager.CequintCallerIdContact;
+import com.android.dialer.numberinfo.incall.CallerIdInfo;
+import com.android.dialer.numberinfo.incall.NumberInfoBridge;
 import com.android.dialer.phonenumbercache.CachedNumberLookupService;
 import com.android.dialer.phonenumbercache.CachedNumberLookupService.CachedContactInfo;
 import com.android.dialer.phonenumbercache.ContactInfo;
@@ -428,7 +430,82 @@ public class ContactInfoCache implements OnImageLoadCompleteListener {
               callId, call.getNumberPresentation(), callerInfo, false, queryToken);
       sendInfoNotifications(callId, initialCacheEntry);
     }
+    maybeQueryNumberInfo(call, callId);
     Trace.endSection();
+  }
+
+  /**
+   * Kicks off the local-first numberinfo lookup (caller-id marks / offline
+   * yellow pages / geo). Results are merged into the cache entry and pushed
+   * through the normal sendInfoNotifications() pipeline, so the in-call card
+   * refreshes exactly like any other async contact data. Never blocks; all
+   * failures are swallowed inside the bridge.
+   */
+  private void maybeQueryNumberInfo(final DialerCall call, final String callId) {
+    final String number = call.getNumber();
+    if (TextUtils.isEmpty(number)) {
+      return;
+    }
+    NumberInfoBridge.query(
+        context,
+        callId,
+        number,
+        (resultCallId, info) -> {
+          // Main thread (bridge contract).
+          if (info == null) {
+            return;
+          }
+          ContactCacheEntry entry = infoMap.get(resultCallId);
+          if (entry == null) {
+            return; // call already gone
+          }
+          if (entry.isLocalContact() || entry.isEmergencyNumber || entry.isVoicemailNumber) {
+            return; // never decorate contacts / emergency / voicemail
+          }
+          applyNumberInfo(entry, info);
+          sendInfoNotifications(resultCallId, entry);
+        });
+  }
+
+  /**
+   * CP2 lookups replace the whole cache entry, which would silently drop a
+   * numberinfo result that arrived earlier. Re-apply the last result to the
+   * replacement entry (never to contacts / emergency / voicemail).
+   */
+  private static void reapplyNumberInfo(ContactCacheEntry previous, ContactCacheEntry replacement) {
+    if (previous == null || previous.numberInfo == null) {
+      return;
+    }
+    if (replacement.isLocalContact() || replacement.isEmergencyNumber
+        || replacement.isVoicemailNumber) {
+      return;
+    }
+    applyNumberInfo(replacement, previous.numberInfo);
+  }
+
+  /** Merges a numberinfo result into the entry without clobbering CP2 data. */
+  private static void applyNumberInfo(
+      ContactCacheEntry entry, CallerIdInfo info) {
+    entry.numberInfo = info;
+    // Business identity takes the name slot only when CP2 gave us nothing
+    // better than the raw number.
+    boolean nameIsNumberOrEmpty =
+        TextUtils.isEmpty(entry.namePrimary)
+            || TextUtils.equals(entry.namePrimary, entry.number)
+            || TextUtils.equals(entry.namePrimary, entry.originalPhoneNumber);
+    if (info.isBusiness && info.bizName != null && nameIsNumberOrEmpty) {
+      entry.namePrimary = info.bizName;
+      entry.isBusiness = true;
+      entry.photoType = ContactPhotoType.BUSINESS;
+    }
+    if (!TextUtils.isEmpty(info.label)) {
+      entry.label = info.label;
+    }
+    entry.numberInfoIsSpam = info.isSpam;
+    if (TextUtils.isEmpty(entry.location) && !TextUtils.isEmpty(info.location)) {
+      entry.location = info.location;
+      entry.shouldShowLocation = true;
+    }
   }
 
   @AnyThread
@@ -471,6 +548,7 @@ public class ContactInfoCache implements OnImageLoadCompleteListener {
     // We always replace the entry. The only exception is the same photo case.
     ContactCacheEntry cacheEntry = buildEntry(context, callerInfo, presentationMode);
     cacheEntry.queryId = queryToken.queryId;
+    reapplyNumberInfo(existingCacheEntry, cacheEntry);
 
     if (didLocalLookup) {
       if (cacheEntry.displayPhotoUri != null) {
@@ -731,6 +809,10 @@ public class ContactInfoCache implements OnImageLoadCompleteListener {
     boolean isBusiness;
     boolean isEmergencyNumber;
     boolean isVoicemailNumber;
+    /** Last numberinfo result merged into this entry; re-applied after CP2 replaces it. */
+    CallerIdInfo numberInfo;
+    /** True when the numberinfo stack marked this number as spam-like. */
+    public boolean numberInfoIsSpam;
 
     public boolean isLocalContact() {
       return contactLookupResult == ContactLookupResult.Type.LOCAL_CONTACT;
@@ -774,6 +856,8 @@ public class ContactInfoCache implements OnImageLoadCompleteListener {
           + shouldShowLocation
           + ", isEmergencyNumber="
           + isEmergencyNumber
+          + ", numberInfoIsSpam="
+          + numberInfoIsSpam
           + ", isVoicemailNumber="
           + isVoicemailNumber
           + '}';
@@ -915,6 +999,8 @@ public class ContactInfoCache implements OnImageLoadCompleteListener {
         Log.d(TAG, "Business has no image. Using default.");
         entry.photoType = ContactPhotoType.BUSINESS;
       }
+
+      reapplyNumberInfo(oldEntry, entry);
 
       Log.d(TAG, "put entry into map: " + entry);
       infoMap.put(callId, entry);

@@ -20,7 +20,7 @@ private fun JSONObject.optNullableString(key: String): String? {
  * rejected as a whole so a broken hot-update never replaces a good one) but
  * lenient about unknown keys (forward compatibility).
  *
- * JSON shape (see assets/numberinfo/rules.json for the authoritative sample):
+ * JSON shape (see numberinfo/rules.json asset (java/com/android/dialer/numberinfo/assets) for the authoritative sample):
  *
  * {
  *   "schemaVersion": 1,

@@ -160,6 +160,14 @@ public class DialerSettingsActivity extends BaseActivity implements
       callScreeningSettings.setIconSpaceReserved(false);
       getPreferenceScreen().addPreference(callScreeningSettings);
 
+      final Preference numberInfoSettings = new Preference(getContext());
+      numberInfoSettings.setTitle(
+              com.android.dialer.numberinfo.R.string.numberinfo_settings_title);
+      numberInfoSettings.setFragment(
+              com.android.dialer.numberinfo.settings.NumberInfoSettingsFragment.class.getName());
+      numberInfoSettings.setIconSpaceReserved(false);
+      getPreferenceScreen().addPreference(numberInfoSettings);
+
       TelephonyManager telephonyManager = getContext().getSystemService(TelephonyManager.class);
       TelecomManager telecomManager = (TelecomManager) getContext().getSystemService(
               Context.TELECOM_SERVICE);

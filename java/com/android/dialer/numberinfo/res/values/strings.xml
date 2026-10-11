@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: 2026 The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
+-->
+<resources>
+  <!-- Caller ID card lines (Pixel-style) -->
+  <string name="numberinfo_mark_count">Reported by %1$s users</string>
+  <string name="numberinfo_verified_business">Verified business</string>
+
+  <string name="numberinfo_mark_fraud">Suspected fraud</string>
+  <string name="numberinfo_mark_harassment">Suspected harassment</string>
+  <string name="numberinfo_mark_telemarketing">Telemarketing</string>
+  <string name="numberinfo_mark_agent">Agent call</string>
+  <string name="numberinfo_mark_debt">Debt collection</string>
+  <string name="numberinfo_mark_express">Delivery</string>
+  <string name="numberinfo_mark_taxi">Taxi</string>
+  <string name="numberinfo_mark_custom">User-reported number</string>
+
+  <!-- Settings -->
+  <string name="numberinfo_settings_title">Caller ID &amp; yellow pages</string>
+  <string name="numberinfo_online_lookup_title">Online number lookup</string>
+  <string name="numberinfo_online_lookup_summary">Look up unknown numbers on third-party services. The caller\'s number is sent to the enabled sources. Contacts are never looked up.</string>
+  <string name="numberinfo_sources_category">Data sources</string>
+  <string name="numberinfo_update_rules_title">Update parse rules</string>
+  <string name="numberinfo_update_rules_success">Rules updated</string>
+  <string name="numberinfo_update_rules_unchanged">Rules already up to date</string>
+  <string name="numberinfo_update_rules_failure">Rule update failed</string>
+  <string name="numberinfo_source_so360">360 Number Database</string>
+  <string name="numberinfo_source_baidu">Baidu Number Database</string>
+  <string name="numberinfo_source_sogou">Sogou Phone Bang</string>
+  <string name="numberinfo_source_haoma">Baidu Verified Numbers</string>
+  <string name="numberinfo_online_confirm_title">Turn on online number lookup?</string>
+  <string name="numberinfo_online_confirm_message">Unknown numbers will be sent to the third-party sources you enable to fetch marks and business info. Contacts are never looked up. You can turn this off at any time.</string>
+  <string name="numberinfo_online_confirm_positive">Turn on</string>
+</resources>

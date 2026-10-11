@@ -1,0 +1,24 @@
+# SPDX-FileCopyrightText: 2026 The LineageOS Project
+# SPDX-License-Identifier: Apache-2.0
+#
+# Sample seed data for the offline yellow-page database.
+# Replace with a licensed full dataset before shipping; format:
+#   number,name,category,verified
+95338,顺丰速运客服,快递物流,1
+95311,京东客服,电商,1
+95188,支付宝客服,金融支付,1
+95017,微信支付客服,金融支付,1
+10086,中国移动客服,运营商,1
+10010,中国联通客服,运营商,1
+10000,中国电信客服,运营商,1
+95533,中国建设银行,银行,1
+95588,中国工商银行,银行,1
+95599,中国农业银行,银行,1
+95566,中国银行,银行,1
+4008205555,招商银行信用卡中心,银行,1
+95555,招商银行,银行,1
+12306,铁路客户服务中心,交通出行,1
+12345,政务服务便民热线,政务,1
+95106,滴滴出行客服,交通出行,1
+10101111,美团客服,生活服务,1
+95013,联通在信,呼叫中心,0

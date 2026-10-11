@@ -1,0 +1,24 @@
+# SPDX-FileCopyrightText: 2026 The LineageOS Project
+# SPDX-License-Identifier: Apache-2.0
+#
+# Sample of the offline mobile-segment geo table. Format (sorted by prefix):
+#   prefix7,province,city,carrier
+# Full tables (~500k rows covering all 7-digit segments) can be generated from
+# open datasets, e.g. https://github.com/xluohome/phonedata (verify license).
+1300000,山东,济南,联通
+1300001,江苏,常州,联通
+1310000,北京,北京,联通
+1350000,广东,广州,移动
+1380000,北京,北京,移动
+1380013,北京,北京,移动
+1390000,北京,北京,移动
+1500000,广东,广州,移动
+1590000,北京,北京,移动
+1700000,广东,广州,电信
+1700500,北京,北京,电信
+1710000,北京,北京,联通
+1760000,广东,广州,联通
+1850000,北京,北京,联通
+1880000,北京,北京,移动
+1890000,广东,深圳,电信
+1990000,广东,深圳,电信

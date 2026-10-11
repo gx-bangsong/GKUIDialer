@@ -652,7 +652,7 @@ public class CallCardPresenter
               .setIsSipCall(primaryContactInfo.isSipCall)
               .setIsContactPhotoShown(showContactPhoto)
               .setIsWorkCall(hasWorkCallProperty || isWorkContact)
-              .setIsSpam(primary.isSpam())
+              .setIsSpam(primary.isSpam() || primaryContactInfo.numberInfoIsSpam)
               .setIsLocalContact(primaryContactInfo.isLocalContact())
               .setAnsweringDisconnectsOngoingCall(primary.answeringDisconnectsForegroundVideoCall())
               .setContactInfoLookupKey(primaryContactInfo.lookupKey)

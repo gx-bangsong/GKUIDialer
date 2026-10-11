@@ -88,10 +88,10 @@ java/com/android/dialer/
     ├── app/…settings…                        # 设置入口挂载
     └── AndroidManifest.xml / Android.bp      # 服务注册、Kotlin/Room 依赖
 
-assets/
-├── numberinfo/rules.json                # 内置解析规则（可被热更新覆盖）
-├── numberinfo/phone_location.dat        # 号段归属地库
-└── yellowpage/yellowpage.db             # 预置离线黄页库
+功能资产随模块放置，由 Android.bp 的 `asset_dirs` 打包（目录内的子目录名即 APK assets 路径）：
+java/com/android/dialer/numberinfo/assets/numberinfo/rules.json          # 内置解析规则（可被热更新覆盖）
+java/com/android/dialer/numberinfo/assets/numberinfo/phone_location.csv  # 号段归属地表（prefix7,省,市,运营商）
+java/com/android/dialer/yellowpage/assets/yellowpage/yellowpage.db       # 预置离线黄页库（tools/gen_yellowpage_db.py 生成）
 ```
 
 单元测试（Robolectric，新增 `android_robolectric_test` 或 `android_test` 目标 `DialerNumberInfoTests`）：
@@ -197,7 +197,7 @@ class ProviderManager @Inject constructor(...) {
 
 ### 3.2 ParseRuleEngine 与规则 JSON 结构
 
-规则加载优先级：`filesDir/numberinfo/rules.json`（热更新落盘）> `assets/numberinfo/rules.json`（内置兜底）。远程更新：设置页手动/定期从 `ruleUpdateUrl` 拉取，**校验 schemaVersion + 全量规则可解析** 后才原子替换落盘，失败保留旧规则。
+规则加载优先级：`filesDir/numberinfo/rules.json`（热更新落盘）> `numberinfo/rules.json` assets（内置兜底）。远程更新：设置页手动/定期从 `ruleUpdateUrl` 拉取，**校验 schemaVersion + 全量规则可解析** 后才原子替换落盘，失败保留旧规则。
 
 ```jsonc
 {
@@ -410,7 +410,25 @@ aaptflags 增加:  对应 --extra-packages
 
 1. Manifest：`CallScreeningService` 注册（我来写）；ROM 侧确认 Dialer 保持 ROLE_DIALER 默认授予。
 2. 离线黄页库数据来源（CSV/db 均可），或先用我生成的示例小库跑通链路。
-3. 归属地号段库（可用开源 phone-number-geo 数据，需确认许可证可入库）。
+3. 归属地号段库：当前随仓库的 `phone_location.csv` 仅为样例（几十行），上线前需替换为完整 7 位号段表，并确认数据许可证可入库。
 4. `ruleUpdateUrl` 远程规则托管地址（可暂空，走内置规则）。
-5. 若 ROM prebuilts 缺 Room compiler：确认接受 SQLiteOpenHelper 兜底方案。
+5. 存储已定为 SQLiteOpenHelper（Soong 不支持 kapt，不引入 Room），无需再确认。
 6. 隐私弹窗文案的法务确认（我给默认文案）。
+
+---
+
+## 9. 实现状态
+
+| 批次 | 内容 | 状态 |
+|---|---|---|
+| ① core | 规则引擎、多源聚合、缓存、ProviderManager、设置开关（`97223f0`） | 已提交 |
+| ② callscreening | `CallScreeningService` 拦截、黑白名单/号段/归属地/标记类型规则、拦截记录、规则导入导出（`912a902`） | 已提交 |
+| ③ yellowpage + InCallUI | 离线黄页 provider + 归属地 provider、InCallUI 标记/黄页展示、号码识别设置页、资产打包 | 本次提交 |
+
+第三批要点：
+- 本地源（黄页 `local_yp`=900、归属地 `local_geo`=800）同步可用，默认开启，不出境。
+- 在线源（haoma/sogou/so360/baidu）受总开关与逐源开关控制，默认关闭；开启需二次确认。
+- InCallUI 仅在 `ContactInfoCache` 中做装饰：联系人/紧急号码/语音信箱不查询、不装饰；CP2 结果覆盖 entry 时会重新应用已得到的号码识别结果，避免竞态丢失。
+- 展示：spam 标记在来电卡片显示具体标签（如“疑似诈骗 · 被 1,283 人标记”），无标签时回退通用文案；商家显示名仅在号码本身无 CP2 名称时替换。
+- 测试：纯逻辑测试（JVM）覆盖规则解析、聚合、拦截决策、标签格式化、归属地表解析、黄页 provider。
+

@@ -41,6 +41,7 @@ android_app {
         "--extra-packages com.android.dialer.main.impl.bottomnav",
         "--extra-packages com.android.dialer.main.impl.toolbar",
         "--extra-packages com.android.dialer.notification",
+        "--extra-packages com.android.dialer.numberinfo",
         "--extra-packages com.android.dialer.oem",
         "--extra-packages com.android.dialer.phonelookup.database",
         "--extra-packages com.android.dialer.phonenumberutil",
@@ -99,6 +100,10 @@ android_app {
     aidl: {
         local_include_dirs: ["java"],
     },
+    asset_dirs: [
+        "java/com/android/dialer/numberinfo/assets",
+        "java/com/android/dialer/yellowpage/assets",
+    ],
     certificate: "shared",
     exclude_srcs: ["java/com/android/dialer/rootcomponentgenerator/*.java"],
     libs: [
@@ -161,6 +166,7 @@ android_app {
         "java/com/android/dialer/main/impl/res",
         "java/com/android/dialer/main/impl/toolbar/res",
         "java/com/android/dialer/notification/res",
+        "java/com/android/dialer/numberinfo/res",
         "java/com/android/dialer/oem/res",
         "java/com/android/dialer/phonenumberutil/res",
         "java/com/android/dialer/postcall/res",
@@ -299,6 +305,7 @@ android_test {
     srcs: [
         "java/com/android/dialer/callscreening/**/*.kt",
         "java/com/android/dialer/numberinfo/**/*.kt",
+        "java/com/android/dialer/yellowpage/**/*.kt",
         "javatests/com/android/dialer/callscreening/**/*.kt",
         "javatests/com/android/dialer/numberinfo/**/*.kt",
     ],
@@ -308,8 +315,15 @@ android_test {
         "java/com/android/dialer/callscreening/DialerCallScreeningService.kt",
         "java/com/android/dialer/callscreening/record/BlockedCallsActivity.kt",
         "java/com/android/dialer/callscreening/ui/**/*.kt",
+        // Needs the app's aapt-generated R (numberinfo string resources) and
+        // androidx.preference; covered by the on-device app build instead.
+        "java/com/android/dialer/numberinfo/incall/NumberInfoBridge.kt",
+        "java/com/android/dialer/numberinfo/settings/NumberInfoSettingsFragment.kt",
     ],
-    asset_dirs: ["assets"],
+    asset_dirs: [
+        "java/com/android/dialer/numberinfo/assets",
+        "java/com/android/dialer/yellowpage/assets",
+    ],
     static_libs: [
         "androidx.test.ext.junit",
         "androidx.test.runner",

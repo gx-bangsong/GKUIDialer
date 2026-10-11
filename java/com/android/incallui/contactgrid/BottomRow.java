@@ -85,7 +85,12 @@ public class BottomRow {
     boolean shouldPopulateAccessibilityEvent = true;
 
     if (isIncoming(state) && primaryInfo.isSpam()) {
-      label = context.getString(R.string.contact_grid_incoming_suspected_spam);
+      // Prefer the specific mark from numberinfo (e.g. "疑似诈骗 · 被 1,283 人标记");
+      // fall back to the generic string when no label is available.
+      label =
+          TextUtils.isEmpty(primaryInfo.label())
+              ? context.getString(R.string.contact_grid_incoming_suspected_spam)
+              : primaryInfo.label();
       isSpamIconVisible = true;
       isHdIconVisible = false;
     } else if (state.state() == DialerCallState.DISCONNECTING) {
