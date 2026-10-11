@@ -11,9 +11,14 @@ package com.android.dialer.numberinfo.incall
  */
 object CallLogLabels {
 
-    /** The business name shown in place of the number, or null. */
+    /**
+     * The business name shown in place of the number, or null. Spam-marked numbers keep the
+     * number as the name: the spam label must stay visible, and the call log only shows the
+     * label when the name slot is empty. This matches the in-call card, where spam wins.
+     */
     @JvmStatic
-    fun nameFor(info: CallerIdInfo): String? = info.bizName?.takeIf { it.isNotBlank() }
+    fun nameFor(info: CallerIdInfo): String? =
+        info.bizName?.takeIf { it.isNotBlank() && !info.isSpam }
 
     /**
      * The line shown in place of the location, for numbers marked as spam, or

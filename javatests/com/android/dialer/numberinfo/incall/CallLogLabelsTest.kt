@@ -26,6 +26,13 @@ class CallLogLabelsTest {
     }
 
     @Test
+    fun spamNumber_keepsTheNumberAsName_evenIfItHasABusinessName() {
+        // The spam label must stay visible; a business name would hide it in the call log.
+        assertNull(CallLogLabels.nameFor(
+            info(bizName = "顺丰速运客服", label = "疑似诈骗", isSpam = true)))
+    }
+
+    @Test
     fun blankOrMissingBusinessName_isNull() {
         assertNull(CallLogLabels.nameFor(info()))
         assertNull(CallLogLabels.nameFor(info(bizName = "  ")))
