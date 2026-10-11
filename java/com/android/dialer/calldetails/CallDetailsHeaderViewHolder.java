@@ -218,7 +218,9 @@ public class CallDetailsHeaderViewHolder extends RecyclerView.ViewHolder
     callDetailsHeaderListener.createLocationTask(
         number,
         location -> onLocationLoaded(number, location),
-        this::onFailure);
+        // Not onFailure(): that one shows the assisted-dialing error. A failed location
+        // lookup just leaves the line empty.
+        unused -> {});
   }
 
   private void onLocationLoaded(String number, @Nullable String location) {
