@@ -5,8 +5,8 @@
 
 package com.android.dialer.numberinfo.location
 
-import android.content.Context
 import com.android.dialer.numberinfo.NumberInfoLog
+import java.io.InputStream
 
 /**
  * Optional full mobile-prefix table, loaded from an asset when one is licensed
@@ -20,31 +20,50 @@ import com.android.dialer.numberinfo.NumberInfoLog
  * The parsing/lookup core lives in [PhoneLocationTable] so it is unit-testable
  * on a plain JVM; this class only handles the asset I/O and lazy loading.
  */
-class NumberLocationLoader(private val context: Context) {
+class NumberLocationLoader(
+    /** Opens the table asset. Throws when the asset is absent. Injectable for tests. */
+    private val openAsset: () -> InputStream,
+) {
+
+    private sealed class State {
+        class Loaded(val table: PhoneLocationTable) : State()
+
+        /** Remembered after the first failed open: a missing asset is not retried per lookup. */
+        object Missing : State()
+    }
 
     @Volatile
-    private var table: PhoneLocationTable? = null
+    private var state: State? = null
     private val lock = Any()
+    private var openAttempts = 0
 
-    /** @param number normalized number; @return "北京 移动" style or null (mobile only). */
+    /** @param number normalized number; @return "北京 · 移动" style or null (mobile only). */
     fun get(number: String): String? {
         if (number.length < 11 || number[0] != '1' || number[1] !in '3'..'9') return null
         if (!number.all { it in '0'..'9' }) return null
-        return loadTable()?.lookupMobile(number)
+        val loaded = loadState() as? State.Loaded ?: return null
+        return loaded.table.lookupMobile(number)
     }
 
-    private fun loadTable(): PhoneLocationTable? {
-        table?.let { return it }
+    /** Number of times the asset was opened (for tests). */
+    internal fun openAttempts(): Int = synchronized(lock) { openAttempts }
+
+    private fun loadState(): State {
+        state?.let { return it }
         synchronized(lock) {
-            table?.let { return it }
-            return try {
-                context.assets.open(ASSET_PATH).bufferedReader().useLines { lines ->
-                    PhoneLocationTable.parse(lines)
-                }.also { table = it }
+            state?.let { return it }
+            openAttempts++
+            val loaded: State = try {
+                val table = openAsset().bufferedReader().use { reader ->
+                    PhoneLocationTable.parse(reader.lineSequence())
+                }
+                State.Loaded(table)
             } catch (e: Exception) {
-                NumberInfoLog.d("phone location table unavailable: $e")
-                null
+                NumberInfoLog.d("phone location table not bundled; using libphonenumber")
+                State.Missing
             }
+            state = loaded
+            return loaded
         }
     }
 

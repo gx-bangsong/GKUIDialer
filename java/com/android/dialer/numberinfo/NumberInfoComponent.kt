@@ -59,7 +59,7 @@ class NumberInfoComponent private constructor(context: Context) {
     }
 
     private val locationLoader: NumberLocationLoader by lazy {
-        NumberLocationLoader(appContext)
+        NumberLocationLoader { appContext.assets.open(NumberLocationLoader.ASSET_PATH) }
     }
 
     private val numberLocation: NumberLocationService by lazy {
