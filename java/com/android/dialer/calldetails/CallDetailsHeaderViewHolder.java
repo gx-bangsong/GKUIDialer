@@ -49,6 +49,7 @@ import com.android.dialer.dialercontact.DialerContact;
 import com.android.dialer.glidephotomanager.GlidePhotoManagerComponent;
 import com.android.dialer.numberinfo.incall.CallLogLabels;
 import com.android.dialer.numberinfo.incall.CallerIdInfo;
+import com.android.dialer.numberinfo.location.NumberLocationFormatter;
 import com.android.dialer.numberinfo.ui.ManualMarkActivity;
 import com.android.dialer.phonenumberutil.PhoneNumberHelper;
 import com.android.dialer.util.DialerUtils;
@@ -222,9 +223,12 @@ public class CallDetailsHeaderViewHolder extends RecyclerView.ViewHolder
       return;
     }
     pendingLocationNumber = number;
+    // The name slot is replaced by a business name, so keep the formatted number for the
+    // secondary line (it is the name the header shows for a non-contact).
+    String numberText = contact.getNameOrNumber();
     callDetailsHeaderListener.createNumberInfoTask(
         number,
-        info -> onNumberInfoLoaded(number, info),
+        info -> onNumberInfoLoaded(number, numberText, info),
         // Not onFailure(): that one shows the assisted-dialing error. A failed lookup just
         // leaves the header as it is.
         unused -> {});
@@ -242,17 +246,25 @@ public class CallDetailsHeaderViewHolder extends RecyclerView.ViewHolder
         show ? v -> context.startActivity(ManualMarkActivity.newIntent(context, number)) : null);
   }
 
-  private void onNumberInfoLoaded(String number, @Nullable CallerIdInfo info) {
+  private void onNumberInfoLoaded(
+      String number, String numberText, @Nullable CallerIdInfo info) {
     if (info == null || !number.equals(pendingLocationNumber)) {
       return;
     }
+    String secondary;
     String businessName = CallLogLabels.nameFor(info);
     if (businessName != null) {
       nameView.setText(businessName);
-    }
-    String secondary = CallLogLabels.spamLineFor(info);
-    if (secondary == null) {
-      secondary = info.location;
+      // Same as the call log: the number stays visible, with the location after it.
+      secondary =
+          TextUtils.isEmpty(info.location)
+              ? numberText
+              : numberText + NumberLocationFormatter.SEPARATOR + info.location;
+    } else {
+      secondary = CallLogLabels.spamLineFor(info);
+      if (secondary == null) {
+        secondary = info.location;
+      }
     }
     // Only fill the line when it is empty (the number is shown there otherwise).
     if (TextUtils.isEmpty(secondary)
