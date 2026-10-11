@@ -51,6 +51,11 @@ object ContactStatusPolicy {
 /**
  * Reads the contacts provider via PhoneLookup. Blocking; call from a background
  * thread only. Never throws.
+ *
+ * Uses ENTERPRISE_CONTENT_FILTER_URI, the same URI ContactInfoHelper uses, so
+ * contacts from a work profile (for example from a managed
+ * account) count as contacts too. Without work contacts the result is the same
+ * as CONTENT_FILTER_URI.
  */
 class AndroidContactChecker(private val context: Context) : ContactChecker {
 
@@ -67,7 +72,7 @@ class AndroidContactChecker(private val context: Context) : ContactChecker {
             return ContactStatusPolicy.resolve(unlocked, permitted, found = null)
         }
         val found: Boolean? = try {
-            val uri = PhoneLookup.CONTENT_FILTER_URI.buildUpon().appendPath(number).build()
+            val uri = PhoneLookup.ENTERPRISE_CONTENT_FILTER_URI.buildUpon().appendPath(number).build()
             context.contentResolver.query(uri, arrayOf(PhoneLookup._ID), null, null, null)
                 ?.use { it.moveToFirst() }
         } catch (e: Exception) {
