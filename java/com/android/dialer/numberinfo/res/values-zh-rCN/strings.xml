@@ -29,7 +29,7 @@
   <string name="numberinfo_source_sogou">搜狗电话邦</string>
   <string name="numberinfo_source_haoma">百度号码认证</string>
   <string name="numberinfo_online_confirm_title">开启在线号码识别？</string>
-  <string name="numberinfo_online_confirm_message">不在通讯录中的来电号码，会发送给你开启的数据源：360 号码库、百度号码库、搜狗电话邦、百度号码认证。只发送电话号码，不发送姓名、通话记录或其他数据。联系人号码永不发送。去电不做在线查询。你可以随时关闭。</string>
+  <string name="numberinfo_online_confirm_message">不在通讯录中的来电号码，会发送给你在下方开启的数据源。只发送电话号码，不发送姓名、通话记录或其他数据。联系人号码永不发送。去电不做在线查询。你可以随时关闭。</string>
   <string name="numberinfo_online_confirm_positive">开启</string>
   <string name="numberinfo_update_rules_not_configured">未配置更新源</string>
   <string name="numberinfo_clear_cache_title">清除在线缓存</string>
