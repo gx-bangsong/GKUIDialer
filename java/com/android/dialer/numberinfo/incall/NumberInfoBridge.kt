@@ -8,11 +8,11 @@ package com.android.dialer.numberinfo.incall
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import com.android.dialer.numberinfo.ContactStatus
 import com.android.dialer.numberinfo.MarkType
 import com.android.dialer.numberinfo.NumberInfo
 import com.android.dialer.numberinfo.NumberInfoComponent
 import com.android.dialer.numberinfo.NumberInfoLog
-import com.android.dialer.numberinfo.NumberNormalizer
 import com.android.dialer.numberinfo.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -48,9 +48,10 @@ object NumberInfoBridge {
         scope.launch {
             try {
                 val repository = NumberInfoComponent.get(appContext).repository()
-                val normalized = NumberNormalizer.normalize(rawNumber) ?: return@launch
-                if (repository.isContact(normalized)) {
-                    return@launch // contacts: never queried, never decorated
+                // Anything but a confirmed non-contact is left alone: contacts, and
+                // numbers whose status is unknown (locked device, no permission).
+                if (repository.contactStatus(rawNumber) != ContactStatus.NOT_CONTACT) {
+                    return@launch
                 }
                 // Phase 1: local (manual mark / offline yellow pages / geo / cache).
                 repository.peekLocal(rawNumber)?.let {

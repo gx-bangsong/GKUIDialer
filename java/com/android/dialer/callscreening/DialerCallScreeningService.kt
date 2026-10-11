@@ -12,7 +12,6 @@ import com.android.dialer.numberinfo.NumberInfoComponent
 import com.android.dialer.numberinfo.NumberInfoLog
 import com.android.dialer.numberinfo.NumberNormalizer
 import com.android.dialer.numberinfo.awaitWithin
-import com.android.dialer.numberinfo.provider.ProviderManager
 import com.android.dialer.callscreening.rule.ScreeningMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -22,20 +21,28 @@ import kotlinx.coroutines.launch
 import org.json.JSONObject
 
 /**
- * Official CallScreeningService implementation. Because this app holds
- * ROLE_DIALER, Telecom binds it automatically for every non-contact incoming
- * call — no extra role request needed.
+ * Official CallScreeningService implementation. Telecom binds the default
+ * dialer's screening service unless the user has chosen another screening app,
+ * so no extra role request is made here.
+ *
+ * Contacts: Telecom only skips contacts for screening apps that lack
+ * READ_CONTACTS. This app holds READ_CONTACTS, so contact calls are delivered
+ * here too and every call is checked against the contacts provider
+ * ([ScreeningPipeline]). An unreadable contacts provider (before first unlock,
+ * no permission, query failure) is UNKNOWN: such a call is silenced instead of
+ * blocked, and never looked up online.
  *
  * Latency contract: Telecom gives ~5s before it treats the service as
  * unresponsive and completes the call normally. Budget here:
  *   - local phase (rules + manual + cache + local providers): tens of ms
  *   - online phase: only when a MARK_TYPE rule exists and nothing local
- *     decided; hard-capped at [ONLINE_BUDGET_MS] per source and
- *     [TOTAL_BUDGET_MS] overall — on timeout we fail open (allow).
+ *     decided; hard-capped at [ScreeningPipeline.ONLINE_BUDGET_MS] per source
+ *     and [TOTAL_BUDGET_MS] overall; on timeout we fail open (allow).
  *   - the total budget bounds the *wait* ([awaitWithin]), so blocking work
  *     (DNS, sockets, SQLite, contacts) can never delay the response past it.
  *
- * Decisions themselves are delegated to the pure [ScreeningDecisionEngine].
+ * Decisions themselves are delegated to [ScreeningPipeline] and the pure
+ * [ScreeningDecisionEngine].
  */
 class DialerCallScreeningService : CallScreeningService() {
 
@@ -87,21 +94,28 @@ class DialerCallScreeningService : CallScreeningService() {
                 ScreeningDecisionEngine.Decision(ScreeningDecisionEngine.Action.ALLOW)
             }
 
-            if (decision.blocked) {
-                // Answer Telecom first; bookkeeping must not eat into its deadline.
-                respondToCall(
-                    callDetails,
-                    CallResponse.Builder()
-                        .setDisallowCall(true)
-                        .setRejectCall(true)
-                        .setSkipNotification(settings.skipCallNotification)
-                        .setSkipCallLog(settings.skipCallLog)
-                        .build())
-                NumberInfoLog.i("blocked "
-                        + NumberNormalizer.maskForLog(number) + " (${decision.summary})")
-                recordBlockedCall(screening, component, number, decision)
-            } else {
-                respondAllow(callDetails)
+            when (decision.action) {
+                ScreeningDecisionEngine.Action.BLOCK -> {
+                    // Answer Telecom first; bookkeeping must not eat into its deadline.
+                    respondToCall(
+                        callDetails,
+                        CallResponse.Builder()
+                            .setDisallowCall(true)
+                            .setRejectCall(true)
+                            .setSkipNotification(settings.skipCallNotification)
+                            .setSkipCallLog(settings.skipCallLog)
+                            .build())
+                    NumberInfoLog.i("blocked "
+                            + NumberNormalizer.maskForLog(number) + " (${decision.summary})")
+                    recordBlockedCall(screening, component, number, decision)
+                }
+                ScreeningDecisionEngine.Action.SILENCE -> {
+                    // Rings silently and stays in the call log; not a blocked call.
+                    respondToCall(callDetails, CallResponse.Builder().setSilenceCall(true).build())
+                    NumberInfoLog.i("silenced "
+                            + NumberNormalizer.maskForLog(number) + " (${decision.summary})")
+                }
+                ScreeningDecisionEngine.Action.ALLOW -> respondAllow(callDetails)
             }
         }
     }
@@ -112,35 +126,18 @@ class DialerCallScreeningService : CallScreeningService() {
         number: String,
     ): ScreeningDecisionEngine.Decision {
         val settings = screening.settings()
-        val rules = screening.blockRuleDao().getEnabled()
         val repository = component.repository()
-
-        // Contacts: Telecom usually doesn't screen them, but double-check —
-        // the engine treats it as an unconditional allow.
-        val isContact = repository.isContact(number)
-
-        // Phase 1: local-only info (manual mark, fresh cache, local providers).
-        val localInfo = repository.peekLocal(number)
-        val localDecision = engine.decide(
-            number, localInfo, rules, settings.mode, isContact,
-            settings.markCountThreshold)
-        if (localDecision.blocked || settings.mode == ScreeningMode.WHITELIST) {
-            // Whitelist mode never needs online data; blacklist local hit is final.
-            return localDecision
-        }
-
-        // Phase 2: online marks — only worth the latency when a MARK_TYPE rule
-        // could actually change the outcome and the privacy switch is on.
-        val hasMarkRule = rules.any {
-            it.type == com.android.dialer.callscreening.rule.RuleType.MARK_TYPE
-        }
-        if (!hasMarkRule || !component.settings().onlineLookupEnabled) {
-            return localDecision
-        }
-        val onlineInfo = repository.query(number, perSourceTimeoutMs = ONLINE_BUDGET_MS)
-        return engine.decide(
-            number, onlineInfo ?: localInfo, rules, settings.mode, isContact,
-            settings.markCountThreshold)
+        val pipeline = ScreeningPipeline(
+            engine = engine,
+            contactStatus = { repository.contactStatus(it) },
+            loadRules = { screening.blockRuleDao().getEnabled() },
+            mode = { settings.mode },
+            markCountThreshold = { settings.markCountThreshold },
+            localInfo = { repository.peekLocal(it) },
+            onlineEnabled = { component.settings().onlineLookupEnabled },
+            onlineInfo = { n, budgetMs -> repository.query(n, perSourceTimeoutMs = budgetMs) },
+        )
+        return pipeline.decide(number)
     }
 
     private fun recordBlockedCall(
@@ -189,8 +186,5 @@ class DialerCallScreeningService : CallScreeningService() {
     companion object {
         /** Keep well under Telecom's ~5s screening deadline. */
         const val TOTAL_BUDGET_MS = 3500L
-
-        /** Per-online-source budget inside the screening path. */
-        const val ONLINE_BUDGET_MS = ProviderManager.SCREENING_SOURCE_TIMEOUT_MS
     }
 }

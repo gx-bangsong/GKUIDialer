@@ -9,6 +9,7 @@ import com.android.dialer.callscreening.ScreeningDecisionEngine.Action
 import com.android.dialer.callscreening.rule.BlockRule
 import com.android.dialer.callscreening.rule.RuleType
 import com.android.dialer.callscreening.rule.ScreeningMode
+import com.android.dialer.numberinfo.ContactStatus
 import com.android.dialer.numberinfo.MarkType
 import com.android.dialer.numberinfo.NumberInfo
 import com.android.dialer.numberinfo.Sources
@@ -117,7 +118,7 @@ class ScreeningDecisionEngineTest {
     fun contacts_neverBlocked_evenWhenBlacklisted() {
         val d = engine.decide(
             n, null, listOf(rule(RuleType.BLACKLIST, n)),
-            ScreeningMode.BLACKLIST, isContact = true)
+            ScreeningMode.BLACKLIST, contact = ContactStatus.CONTACT)
         assertEquals(Action.ALLOW, d.action)
         assertEquals("SAFETY:contact", d.summary)
     }

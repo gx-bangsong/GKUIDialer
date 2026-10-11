@@ -76,7 +76,7 @@ class NumberInfoComponent private constructor(context: Context) {
 
     private val repository: NumberInfoRepository by lazy {
         NumberInfoRepository(
-            appContext, settings, providerManager, cacheDao, manualMarkDao,
+            AndroidContactChecker(appContext), settings, providerManager, cacheDao, manualMarkDao,
             NumberInfoAggregator())
     }
 

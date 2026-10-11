@@ -5,10 +5,6 @@
 
 package com.android.dialer.numberinfo
 
-import android.Manifest
-import android.content.Context
-import android.content.pm.PackageManager
-import android.provider.ContactsContract.PhoneLookup
 import com.android.dialer.numberinfo.aggregate.NumberInfoAggregator
 import com.android.dialer.numberinfo.cache.ManualMarkDao
 import com.android.dialer.numberinfo.cache.NumberInfoCacheDao
@@ -33,7 +29,7 @@ import kotlinx.coroutines.withContext
  * the contact).
  */
 class NumberInfoRepository(
-    private val context: Context,
+    private val contacts: ContactChecker,
     private val settings: NumberInfoSettings,
     private val providerManager: ProviderManager,
     private val cacheDao: NumberInfoCacheDao,
@@ -79,7 +75,7 @@ class NumberInfoRepository(
         perSourceTimeoutMs: Long = ProviderManager.DEFAULT_SOURCE_TIMEOUT_MS,
     ): NumberInfo? = withContext(Dispatchers.IO) {
         val number = NumberNormalizer.normalize(rawNumber) ?: return@withContext null
-        if (isContact(number)) return@withContext null
+        if (contacts.check(number) != ContactStatus.NOT_CONTACT) return@withContext null
 
         val local = providerManager.queryLocal(number)
 
@@ -116,7 +112,7 @@ class NumberInfoRepository(
         if (!settings.onlineLookupEnabled) return
         scope.launch {
             try {
-                if (isContact(number)) return@launch
+                if (contacts.check(number) != ContactStatus.NOT_CONTACT) return@launch
                 val fetched = refreshLocks.withLock(number) {
                     fetchAndCacheOnline(number, ProviderManager.DEFAULT_SOURCE_TIMEOUT_MS)
                 }
@@ -178,20 +174,13 @@ class NumberInfoRepository(
         return results.filter { !it.isEmpty }
     }
 
-    /** Contacts are never looked up online (hard privacy rule). */
-    internal fun isContact(number: String): Boolean {
-        if (context.checkSelfPermission(Manifest.permission.READ_CONTACTS)
-            != PackageManager.PERMISSION_GRANTED) {
-            return false
-        }
-        return try {
-            val uri = PhoneLookup.CONTENT_FILTER_URI.buildUpon()
-                .appendPath(number).build()
-            context.contentResolver.query(
-                uri, arrayOf(PhoneLookup._ID), null, null, null,
-            )?.use { it.moveToFirst() } ?: false
-        } catch (e: Exception) {
-            false
-        }
+    /**
+     * Contact status for a raw number. Blocking (contacts provider); call from
+     * a background thread. Anything other than [ContactStatus.NOT_CONTACT] must
+     * be treated as "do not look this number up online".
+     */
+    fun contactStatus(rawNumber: String?): ContactStatus {
+        val number = NumberNormalizer.normalize(rawNumber) ?: return ContactStatus.UNKNOWN
+        return contacts.check(number)
     }
 }

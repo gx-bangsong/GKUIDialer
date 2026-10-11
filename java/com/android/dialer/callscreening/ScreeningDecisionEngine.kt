@@ -9,6 +9,7 @@ import com.android.dialer.callscreening.rule.BlockRule
 import com.android.dialer.callscreening.rule.RuleType
 import com.android.dialer.callscreening.rule.RuleValues
 import com.android.dialer.callscreening.rule.ScreeningMode
+import com.android.dialer.numberinfo.ContactStatus
 import com.android.dialer.numberinfo.MarkType
 import com.android.dialer.numberinfo.NumberInfo
 import com.android.dialer.numberinfo.Sources
@@ -18,7 +19,7 @@ import com.android.dialer.numberinfo.Sources
  * unit-tested. The service supplies the inputs; this class only decides.
  *
  * Priority (docs §4.3):
- *   0. hardcoded safety: emergency numbers and contacts are always allowed
+ *   0. hardcoded safety: emergency numbers and confirmed contacts are always allowed
  *   1. WHITELIST rule hit                          -> ALLOW (both modes)
  *   2. mode == WHITELIST                           -> BLOCK everything else
  *   3. mode == BLACKLIST:
@@ -27,10 +28,16 @@ import com.android.dialer.numberinfo.Sources
  *        LOCATION rule (substring of location)     -> BLOCK
  *        MARK_TYPE rule (type hit + count gate)    -> BLOCK
  *   4. otherwise                                   -> ALLOW
+ *
+ * Contact status UNKNOWN (locked device, no READ_CONTACTS, lookup failed): the
+ * rules above apply, except that a would-be BLOCK becomes SILENCE — the call
+ * still rings out-of-band and lands in the call log — unless it came from an
+ * exact-number BLACKLIST rule, which stays a hard block.
  */
 class ScreeningDecisionEngine {
 
-    enum class Action { ALLOW, BLOCK }
+    /** SILENCE: let the call through without ringing; not counted as blocked. */
+    enum class Action { ALLOW, BLOCK, SILENCE }
 
     /**
      * @param ruleId id of the deciding rule, null for mode-implied decisions
@@ -49,7 +56,8 @@ class ScreeningDecisionEngine {
     /**
      * @param number normalized number (NumberNormalizer form)
      * @param info aggregated NumberInfo, null when nothing is known
-     * @param isContact true when the number matches a contact
+     * @param contact contact status; CONTACT always allows, UNKNOWN downgrades
+     *   blocks to SILENCE (see class doc)
      * @param markCountThreshold minimum markCount for MARK_TYPE blocking;
      *   bypassed when the mark is the user's own (source == manual)
      */
@@ -58,14 +66,32 @@ class ScreeningDecisionEngine {
         info: NumberInfo?,
         rules: List<BlockRule>,
         mode: ScreeningMode,
-        isContact: Boolean = false,
+        contact: ContactStatus = ContactStatus.NOT_CONTACT,
         markCountThreshold: Int = 0,
     ): Decision {
         if (mode == ScreeningMode.OFF) return ALLOW_DEFAULT
         if (number.isBlank()) return ALLOW_DEFAULT
         if (isEmergencyNumber(number)) return Decision(Action.ALLOW, null, "SAFETY:emergency")
-        if (isContact) return Decision(Action.ALLOW, null, "SAFETY:contact")
+        if (contact == ContactStatus.CONTACT) return Decision(Action.ALLOW, null, "SAFETY:contact")
 
+        val verdict = decideByRules(number, info, rules, mode, markCountThreshold)
+        if (contact == ContactStatus.UNKNOWN && verdict.decision.blocked && !verdict.exactBlacklist) {
+            return Decision(Action.SILENCE, verdict.decision.ruleId,
+                "UNKNOWN-CONTACT:${verdict.decision.summary}")
+        }
+        return verdict.decision
+    }
+
+    /** Outcome of the rule evaluation, plus whether it was an exact-number blacklist hit. */
+    private class Verdict(val decision: Decision, val exactBlacklist: Boolean = false)
+
+    private fun decideByRules(
+        number: String,
+        info: NumberInfo?,
+        rules: List<BlockRule>,
+        mode: ScreeningMode,
+        markCountThreshold: Int,
+    ): Verdict {
         // Rule values are compared in canonical form; rows saved verbatim by
         // older builds (e.g. "+86 138 0013 8000") are canonicalized here, and
         // values that are unusable for their type are dropped.
@@ -79,30 +105,34 @@ class ScreeningDecisionEngine {
 
         // 1. Whitelist beats everything in both modes.
         active.firstOrNull { it.type == RuleType.WHITELIST && numberMatches(number, it.value) }
-            ?.let { return Decision(Action.ALLOW, it.id, "WHITELIST:${it.value}") }
+            ?.let { return Verdict(Decision(Action.ALLOW, it.id, "WHITELIST:${it.value}")) }
 
         // 2. Whitelist mode: everything not whitelisted is blocked.
         if (mode == ScreeningMode.WHITELIST) {
-            return Decision(Action.BLOCK, null, "MODE:WHITELIST")
+            return Verdict(Decision(Action.BLOCK, null, "MODE:WHITELIST"))
         }
 
         // 3. Blacklist mode.
         active.firstOrNull { it.type == RuleType.BLACKLIST && numberMatches(number, it.value) }
-            ?.let { return Decision(Action.BLOCK, it.id, "BLACKLIST:${it.value}") }
+            ?.let {
+                return Verdict(
+                    Decision(Action.BLOCK, it.id, "BLACKLIST:${it.value}"),
+                    exactBlacklist = !it.value.endsWith("*"))
+            }
 
         // Prefix rules: longest matching prefix wins (deterministic when both
         // "17" and "170" exist).
         active.filter { it.type == RuleType.PREFIX && it.value.isNotBlank() }
             .filter { number.startsWith(it.value) }
             .maxByOrNull { it.value.length }
-            ?.let { return Decision(Action.BLOCK, it.id, "PREFIX:${it.value}") }
+            ?.let { return Verdict(Decision(Action.BLOCK, it.id, "PREFIX:${it.value}")) }
 
         val location = info?.location
         if (!location.isNullOrBlank()) {
             active.firstOrNull {
                 it.type == RuleType.LOCATION && it.value.isNotBlank()
                         && location.contains(it.value)
-            }?.let { return Decision(Action.BLOCK, it.id, "LOCATION:${it.value}") }
+            }?.let { return Verdict(Decision(Action.BLOCK, it.id, "LOCATION:${it.value}")) }
         }
 
         if (info != null && info.markType != MarkType.NONE) {
@@ -112,14 +142,14 @@ class ScreeningDecisionEngine {
                 active.firstOrNull {
                     it.type == RuleType.MARK_TYPE && markTypeHit(it.value, info.markType)
                 }?.let {
-                    return Decision(
+                    return Verdict(Decision(
                         Action.BLOCK, it.id,
-                        "MARK_TYPE:${info.markType.id}(${info.markCount})")
+                        "MARK_TYPE:${info.markType.id}(${info.markCount})"))
                 }
             }
         }
 
-        return ALLOW_DEFAULT
+        return Verdict(ALLOW_DEFAULT)
     }
 
     /** Exact match, or prefix match when the rule value ends with '*'. */
